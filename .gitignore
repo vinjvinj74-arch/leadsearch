@@ -4,6 +4,8 @@ dist-netlify/
 .env
 .env.*
 !.env.example
+apify.txt
+maps.txt
 *.log
 .DS_Store
 coverage/

@@ -5,6 +5,7 @@ import { recordAudit } from '../lib/audit.js';
 import { asyncHandler } from '../lib/http.js';
 import { requireAuth } from '../middleware/auth.js';
 import { searchLimiter } from '../middleware/rateLimit.js';
+import { isApifyConfigured, testApifyConnection } from '../services/apifyService.js';
 import { testGooglePlaces } from '../services/placesService.js';
 import { ensureSettings, getIntegrationStatus, updateSettings } from '../services/settingsService.js';
 
@@ -57,9 +58,18 @@ integrationsRouter.get(
 );
 
 integrationsRouter.post(
-  '/google-maps/test',
+  '/discovery/test',
   searchLimiter,
   asyncHandler(async (_req, res) => {
+    if (isApifyConfigured()) {
+      const result = await testApifyConnection();
+      res.json({
+        ...result,
+        message: 'Token do Apify validado e actor acessivel. Nenhuma execucao paga foi iniciada.',
+      });
+      return;
+    }
+
     const result = await testGooglePlaces();
     res.json({
       ...result,

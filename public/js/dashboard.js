@@ -29,7 +29,7 @@ export async function renderDashboard() {
     const maxFunnel = Math.max(1, ...dashboard.funnel.map((entry) => entry.count));
     const warning =
       mapsConfigured() === false
-        ? `<div class="notice notice-warning"><span><strong>Google Maps não configurada.</strong> Defina <span class="mono">GOOGLE_MAPS_API_KEY</span> no servidor para executar pesquisas reais. <a href="#/settings">Abrir configurações</a></span></div>`
+        ? `<div class="notice notice-warning"><span><strong>Descoberta não configurada.</strong> Defina <span class="mono">APIFY_API_TOKEN</span> no servidor para executar pesquisas reais. <a href="#/settings">Abrir configurações</a></span></div>`
         : '';
 
     const upcoming = dashboard.upcoming.length

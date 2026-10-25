@@ -1,7 +1,7 @@
 import type { PoolClient } from 'pg';
 import { withTransaction, query } from '../db/pool.js';
 import { config } from '../config.js';
-import { notFound } from '../lib/errors.js';
+import { conflict, notFound } from '../lib/errors.js';
 import { logger } from '../lib/logger.js';
 import {
   normalizeAddress,
@@ -11,7 +11,15 @@ import {
   normalizeWebsiteUrl,
 } from '../lib/normalize.js';
 import { computeScore, type ScoreWeights } from '../lib/scoring.js';
+import {
+  fetchSearchResults,
+  isApifyConfigured,
+  reserveApifyRun,
+  startSearchRun,
+  waitForSearchRun,
+} from './apifyService.js';
 import { searchPlaces, type PlaceResult, type SearchParams } from './placesService.js';
+import { runSearchEnrichment } from './enrichmentService.js';
 import type { LeadRow } from './leadsService.js';
 
 export interface SearchRow {
@@ -118,6 +126,7 @@ async function insertOrUpdateLead(
   place: PlaceResult,
   weights: Partial<ScoreWeights> | null,
   location: { city: string; state: string | null; country: string },
+  source: { name: string; metadata?: Record<string, unknown> },
 ): Promise<{ leadId: string; created: boolean }> {
   const normalizedName = normalizeName(place.name);
   const normalizedAddress = normalizeAddress(place.address);
@@ -189,8 +198,18 @@ async function insertOrUpdateLead(
     );
     await client.query(
       `INSERT INTO lead_sources (lead_id, source, source_url, metadata)
-       VALUES ($1, 'google_places', $2, $3)`,
-      [existing.id, place.googleMapsUrl, JSON.stringify({ placeId: place.placeId, updated: true })],
+       VALUES ($1, $2, $3, $4)`,
+      [
+        existing.id,
+        source.name,
+        place.googleMapsUrl,
+        JSON.stringify({
+          ...source.metadata,
+          ...place.sourceMetadata,
+          placeId: place.placeId,
+          updated: true,
+        }),
+      ],
     );
     if (!updated.rows[0]) throw new Error('Falha ao atualizar lead.');
     return { leadId: existing.id, created: false };
@@ -238,10 +257,235 @@ async function insertOrUpdateLead(
   if (!lead) throw new Error('Falha ao inserir lead.');
   await client.query(
     `INSERT INTO lead_sources (lead_id, source, source_url, metadata)
-     VALUES ($1, 'google_places', $2, $3)`,
-    [lead.id, place.googleMapsUrl, JSON.stringify({ placeId: place.placeId, created: true })],
+     VALUES ($1, $2, $3, $4)`,
+    [
+      lead.id,
+      source.name,
+      place.googleMapsUrl,
+      JSON.stringify({
+        ...source.metadata,
+        ...place.sourceMetadata,
+        placeId: place.placeId,
+        created: true,
+      }),
+    ],
   );
   return { leadId: lead.id, created: true };
+}
+
+async function insertSearchRow(
+  userId: string,
+  params: SearchParams,
+  limit: number,
+  provider: string,
+  costNote: string,
+): Promise<SearchRow> {
+  return withTransaction(async (client) => {
+    await client.query('SELECT pg_advisory_xact_lock(hashtext($1))', [userId]);
+    const active = await client.query<{ id: string }>(
+      `SELECT id FROM searches
+       WHERE user_id = $1 AND status IN ('running', 'enriching')
+         AND created_at > now() - interval '15 minutes'
+       ORDER BY created_at DESC LIMIT 1`,
+      [userId],
+    );
+    if (active.rowCount) {
+      throw conflict('Ja existe uma pesquisa em andamento. Aguarde a conclusao para iniciar outra.');
+    }
+
+    const inserted = await client.query<SearchRow>(
+      `INSERT INTO searches (user_id, niche, city, state, country, radius_km, result_limit, status, provider, cost_note)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, 'running', $8, $9)
+       RETURNING *`,
+      [
+        userId,
+        params.niche,
+        params.city,
+        params.state ?? null,
+        params.country,
+        params.radiusKm ?? null,
+        limit,
+        provider,
+        costNote,
+      ],
+    );
+    const row = inserted.rows[0];
+    if (!row) throw new Error('Falha ao criar pesquisa.');
+    return row;
+  });
+}
+
+function dedupePlaces(places: PlaceResult[], limit: number): PlaceResult[] {
+  const seen = new Set<string>();
+  const unique: PlaceResult[] = [];
+
+  for (const place of places) {
+    const keys: string[] = [];
+    if (place.placeId) keys.push(`place:${place.placeId}`);
+    const domain = normalizeDomain(place.website ?? '');
+    if (domain) keys.push(`domain:${domain}`);
+    const phone = normalizePhone(place.phone ?? '');
+    if (phone) keys.push(`phone:${phone}`);
+    const name = normalizeName(place.name);
+    const address = normalizeAddress(place.address ?? '');
+    if (name && address) keys.push(`name-address:${name}|${address}`);
+
+    if (keys.some((key) => seen.has(key))) continue;
+    keys.forEach((key) => seen.add(key));
+    unique.push(place);
+    if (unique.length >= limit) break;
+  }
+
+  return unique;
+}
+
+async function importPlaces(
+  userId: string,
+  searchId: string,
+  places: PlaceResult[],
+  weights: Partial<ScoreWeights> | null,
+  location: { city: string; state: string | null; country: string },
+  source: { name: string; metadata?: Record<string, unknown> },
+): Promise<{ created: number; updated: number }> {
+  let created = 0;
+  let updated = 0;
+
+  await withTransaction(async (client) => {
+    for (const place of places) {
+      const result = await insertOrUpdateLead(
+        client,
+        userId,
+        searchId,
+        place,
+        weights,
+        location,
+        source,
+      );
+      if (result.created) created += 1;
+      else updated += 1;
+    }
+  });
+
+  return { created, updated };
+}
+
+async function processApifySearch(
+  userId: string,
+  searchId: string,
+  runId: string,
+  limit: number,
+  params: SearchParams,
+  weights: Partial<ScoreWeights> | null,
+  allowEnrichment: boolean,
+): Promise<void> {
+  try {
+    const run = await waitForSearchRun(runId);
+    if (!run.defaultDatasetId) {
+      throw new Error('A execucao do Apify nao retornou um dataset.');
+    }
+
+    const results = await fetchSearchResults(run.defaultDatasetId, limit);
+    const places = dedupePlaces(results, limit);
+    const stats = await importPlaces(
+      userId,
+      searchId,
+      places,
+      weights,
+      {
+        city: params.city,
+        state: params.state ?? null,
+        country: params.country,
+      },
+      {
+        name: 'apify_google_maps',
+        metadata: {
+          actor: config.apify.actor,
+          runId,
+        },
+      },
+    );
+
+    const nextStatus = allowEnrichment ? 'enriching' : 'completed';
+    await query(
+      `UPDATE searches SET
+        status = $3,
+        results_count = $4,
+        error_message = NULL,
+        completed_at = CASE WHEN $3 = 'completed' THEN now() ELSE NULL END
+       WHERE id = $1 AND user_id = $2`,
+      [searchId, userId, nextStatus, places.length],
+    );
+
+    logger.info(
+      { userId, searchId, runId, found: places.length, created: stats.created, updated: stats.updated },
+      'Pesquisa Apify importada',
+    );
+
+    if (allowEnrichment) {
+      await runSearchEnrichment(userId, searchId);
+      await query(
+        `UPDATE searches SET results_count = $3 WHERE id = $1 AND user_id = $2`,
+        [searchId, userId, places.length],
+      );
+    }
+  } catch (error) {
+    logger.error({ err: error, userId, searchId, runId }, 'Falha ao processar pesquisa Apify');
+    await query(
+      `UPDATE searches SET status = 'failed', error_message = $3, completed_at = now()
+       WHERE id = $1 AND user_id = $2`,
+      [searchId, userId, error instanceof Error ? error.message : 'Falha na pesquisa Apify.'],
+    );
+  }
+}
+
+async function createApifySearch(
+  userId: string,
+  params: SearchParams,
+  limit: number,
+  weights: Partial<ScoreWeights> | null,
+  allowEnrichment: boolean,
+) {
+  const releaseSlot = reserveApifyRun();
+  let search: SearchRow | null = null;
+
+  const costNote =
+    params.radiusKm && params.radiusKm > 0
+      ? 'Executa o Apify Google Maps Scraper com area de busca por raio. O Apify cobra por local raspado e add-ons; o limite por execucao e US$ 1,00.'
+      : 'Executa o Apify Google Maps Scraper. O Apify cobra por local raspado e add-ons; o limite por execucao e US$ 1,00.';
+
+  try {
+    search = await insertSearchRow(userId, params, limit, 'apify_google_maps', costNote);
+    const run = await startSearchRun({ ...params, limit });
+    const updated = await query<SearchRow>(
+      `UPDATE searches SET provider_request_id = $3
+       WHERE id = $1 AND user_id = $2
+       RETURNING *`,
+      [search.id, userId, run.runId],
+    );
+    search = updated.rows[0] ?? search;
+
+    void processApifySearch(userId, search.id, run.runId, limit, params, weights, allowEnrichment)
+      .catch((error) => {
+        logger.error({ err: error, searchId: search?.id, runId: run.runId }, 'Falha nao tratada da pesquisa Apify');
+      })
+      .finally(releaseSlot);
+
+    return {
+      search: mapSearch(search),
+      stats: { found: 0, created: 0, updated: 0 },
+      async: true,
+    };
+  } catch (error) {
+    releaseSlot();
+    if (search) {
+      await query(
+        `UPDATE searches SET status = 'failed', error_message = $3, completed_at = now()
+         WHERE id = $1 AND user_id = $2`,
+        [search.id, userId, error instanceof Error ? error.message : 'Falha ao iniciar a pesquisa.'],
+      );
+    }
+    throw error;
+  }
 }
 
 export async function createSearch(
@@ -251,19 +495,17 @@ export async function createSearch(
   allowEnrichment: boolean,
 ) {
   const limit = Math.min(Math.max(params.limit, 1), config.maxSearchResults);
+
+  if (isApifyConfigured()) {
+    return createApifySearch(userId, params, limit, weights, allowEnrichment);
+  }
+
   const costNote =
     params.radiusKm && params.radiusKm > 0
       ? 'Consome 1 requisicao de Geocoding e 1 de Places Text Search (New). O Google pode cobrar por requisicao conforme a tabela vigente.'
       : 'Consome 1 requisicao de Places Text Search (New). O Google pode cobrar por requisicao conforme a tabela vigente.';
 
-  const inserted = await query<SearchRow>(
-    `INSERT INTO searches (user_id, niche, city, state, country, radius_km, result_limit, status, cost_note)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, 'running', $8)
-     RETURNING *`,
-    [userId, params.niche, params.city, params.state ?? null, params.country, params.radiusKm ?? null, limit, costNote],
-  );
-  const search = inserted.rows[0];
-  if (!search) throw new Error('Falha ao criar pesquisa.');
+  const search = await insertSearchRow(userId, params, limit, 'google_places', costNote);
 
   let places: PlaceResult[];
   try {
@@ -277,19 +519,18 @@ export async function createSearch(
     throw error;
   }
 
-  let created = 0;
-  let updated = 0;
-  await withTransaction(async (client) => {
-    for (const place of places) {
-      const result = await insertOrUpdateLead(client, userId, search.id, place, weights, {
-        city: params.city,
-        state: params.state ?? null,
-        country: params.country,
-      });
-      if (result.created) created += 1;
-      else updated += 1;
-    }
-  });
+  const stats = await importPlaces(
+    userId,
+    search.id,
+    places,
+    weights,
+    {
+      city: params.city,
+      state: params.state ?? null,
+      country: params.country,
+    },
+    { name: 'google_places' },
+  );
 
   const status = allowEnrichment ? 'enriching' : 'completed';
   const finalized = await query<SearchRow>(
@@ -302,10 +543,14 @@ export async function createSearch(
     [search.id, userId, status, places.length],
   );
 
-  logger.info({ userId, searchId: search.id, found: places.length, created, updated }, 'Pesquisa executada');
+  logger.info(
+    { userId, searchId: search.id, found: places.length, created: stats.created, updated: stats.updated },
+    'Pesquisa executada',
+  );
   return {
     search: mapSearch(finalized.rows[0] ?? search),
-    stats: { found: places.length, created, updated },
+    stats: { found: places.length, created: stats.created, updated: stats.updated },
+    async: false,
   };
 }
 

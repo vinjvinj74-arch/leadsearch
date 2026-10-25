@@ -114,7 +114,8 @@ function mapsTestMarkup() {
   if (result.ok === false) {
     return `<div class="notice notice-danger" style="margin-top:12px"><span><strong>Teste falhou.</strong> ${esc(result.message)}</span></div>`;
   }
-  return `<div class="notice notice-success" style="margin-top:12px"><span><strong>Conectividade confirmada.</strong> ${fmtNumber(result.latencyMs)} ms · ${fmtNumber(result.resultCount)} resultado(s) retornado(s). A chamada consumiu uma requisição real.</span></div>`;
+  const provider = result.provider === 'apify_google_maps' ? 'Apify' : 'Google Maps';
+  return `<div class="notice notice-success" style="margin-top:12px"><span><strong>Conectividade confirmada.</strong> ${provider} respondeu em ${fmtNumber(result.latencyMs)} ms. ${result.provider === 'apify_google_maps' ? 'Nenhuma execução paga foi iniciada.' : 'A chamada consumiu uma requisição real.'}</span></div>`;
 }
 
 function diagnosticsMarkup() {
@@ -155,13 +156,13 @@ export function integrationsTabMarkup() {
   const maps = mapsConfigured();
   const mail = emailConfigured();
   const integrations = state.integrations ?? {};
-  const mapsInfo = integrations.googleMaps ?? {};
+  const mapsInfo = integrations.discovery ?? {};
   const emailInfo = integrations.email ?? {};
   const database = integrations.database ?? {};
   const testing = Boolean(state.settingsCache.mapsTesting);
   const diagnostics = state.settingsCache.diagnostics;
   const tested = diagnostics && !diagnostics.error && diagnostics.integrations;
-  const mapsNote = mapsInfo.note || (tested ? diagnostics.integrations.googleMaps.note : '');
+  const mapsNote = mapsInfo.note || (tested ? diagnostics.integrations.discovery?.note : '');
   const emailNote = emailInfo.note || (tested ? diagnostics.integrations.email.note : '');
 
   return `
@@ -171,10 +172,10 @@ export function integrationsTabMarkup() {
         <p>As chaves ficam apenas no servidor. Nenhum segredo é enviado ao navegador.</p>
         <div class="stack" style="gap:10px">
           ${integrationCard({
-            title: 'Google Maps Platform',
+            title: 'Descoberta de empresas',
             configured: maps === true,
             label: mapsInfo.label || (maps ? 'Configurada no servidor' : 'Não configurada no servidor'),
-            note: mapsNote || 'Usada para descobrir empresas e, opcionalmente, geocodificar o raio da busca.',
+            note: mapsNote || 'Apify Google Maps Scraper com token global do servidor para todos os usuários.',
             action: `<button class="btn btn-sm" type="button" data-action="settings-test-maps" ${maps === false || testing ? 'disabled' : ''}>${testing ? 'Testando...' : 'Testar conexão'}</button>`,
           })}
           ${integrationCard({
@@ -191,7 +192,7 @@ export function integrationsTabMarkup() {
           })}
         </div>
         ${mapsTestMarkup()}
-        <p class="small muted" style="margin-top:10px">O teste de conectividade do Google Maps executa uma chamada real e pode gerar cobrança.</p>
+        <p class="small muted" style="margin-top:10px">O teste do Apify valida o token e o acesso ao actor sem iniciar nenhuma execução paga.</p>
       </section>
 
       <section class="settings-section">
@@ -286,13 +287,15 @@ export async function handleAdvancedSettingsAction(element, rerender) {
     state.settingsCache.mapsTest = null;
     rerender();
     try {
-      const result = await api('/api/integrations/google-maps/test', { method: 'POST' });
+      const result = await api('/api/integrations/discovery/test', { method: 'POST' });
       state.settingsCache.mapsTest = {
         ok: true,
         latencyMs: result.latencyMs,
         resultCount: result.resultCount,
+        provider: result.provider,
       };
-      toast(`Google Maps respondeu em ${fmtNumber(result.latencyMs)} ms.`, 'success');
+      const provider = result.provider === 'apify_google_maps' ? 'Apify' : 'Google Maps';
+      toast(`${provider} respondeu em ${fmtNumber(result.latencyMs)} ms.`, 'success');
       await refreshIntegrations();
     } catch (error) {
       state.settingsCache.mapsTest = { ok: false, message: errorMessage(error) };

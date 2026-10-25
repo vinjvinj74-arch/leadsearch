@@ -2,6 +2,7 @@ import { config, EXPORT_FIELDS } from '../config.js';
 import { checkDatabase, query } from '../db/pool.js';
 import { sanitizeWeights } from '../lib/scoring.js';
 import type { UserSettingsRecord } from '../types/session.js';
+import { isApifyConfigured } from './apifyService.js';
 import { isEmailConfigured } from './emailService.js';
 
 interface SettingsRow {
@@ -112,9 +113,9 @@ export async function updateSettings(userId: string, patch: SettingsPatch): Prom
 }
 
 export interface IntegrationStatus {
-  googleMaps: {
+  discovery: {
     configured: boolean;
-    provider: 'google_places';
+    provider: 'apify_google_maps' | 'google_places' | 'none';
     label: string;
     note: string;
   };
@@ -130,17 +131,36 @@ export interface IntegrationStatus {
 }
 
 export function getIntegrationStatus(): IntegrationStatus {
-  const mapsConfigured = Boolean(config.googleMapsApiKey);
+  const apifyConfigured = isApifyConfigured();
+  const googleConfigured = Boolean(config.googleMapsApiKey);
   const emailConfigured = isEmailConfigured();
-  return {
-    googleMaps: {
-      configured: mapsConfigured,
+
+  let discovery: IntegrationStatus['discovery'];
+  if (apifyConfigured) {
+    discovery = {
+      configured: true,
+      provider: 'apify_google_maps',
+      label: 'Apify Google Maps Scraper configurado',
+      note: 'O token global do servidor atende todos os usuarios. O Apify cobra por local raspado e add-ons; cada execucao tem limite de custo definido pelo servidor.',
+    };
+  } else if (googleConfigured) {
+    discovery = {
+      configured: true,
       provider: 'google_places',
-      label: mapsConfigured ? 'Google Maps Platform configurada' : 'Google Maps Platform nao configurada',
-      note: mapsConfigured
-        ? 'Places API (New) e Geocoding API podem gerar cobranca por requisicao conforme a tabela vigente do Google.'
-        : 'Defina GOOGLE_MAPS_API_KEY no ambiente do servidor para habilitar pesquisas reais.',
-    },
+      label: 'Google Maps Platform configurada',
+      note: 'Places API (New) e Geocoding API podem gerar cobranca por requisicao conforme a tabela vigente do Google.',
+    };
+  } else {
+    discovery = {
+      configured: false,
+      provider: 'none',
+      label: 'Fonte de descoberta nao configurada',
+      note: 'Defina APIFY_API_TOKEN no ambiente do servidor para habilitar pesquisas reais.',
+    };
+  }
+
+  return {
+    discovery,
     email: {
       configured: emailConfigured,
       label: emailConfigured ? 'SMTP configurado' : 'SMTP nao configurado',

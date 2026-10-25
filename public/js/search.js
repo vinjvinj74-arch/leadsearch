@@ -53,7 +53,7 @@ function searchStatusMarkup() {
 
       ${
         isFailed
-          ? `<div class="notice notice-danger"><span><strong>A pesquisa falhou.</strong> ${esc(search.errorMessage || 'Verifique a configuração do Google Maps e tente novamente.')}</span></div>`
+          ? `<div class="notice notice-danger"><span><strong>A pesquisa falhou.</strong> ${esc(search.errorMessage || 'Verifique a integração de descoberta e tente novamente.')}</span></div>`
           : ''
       }
 
@@ -186,7 +186,7 @@ export async function renderSearch() {
   const settings = state.settings ?? {};
   const warning =
     mapsConfigured() === false
-      ? `<div class="notice notice-warning"><span><strong>Google Maps não configurada.</strong> A pesquisa real exige <span class="mono">GOOGLE_MAPS_API_KEY</span> no servidor. Você pode preparar os filtros agora.</span></div>`
+      ? `<div class="notice notice-warning"><span><strong>Descoberta não configurada.</strong> A pesquisa real exige <span class="mono">APIFY_API_TOKEN</span> no servidor. Você pode preparar os filtros agora.</span></div>`
       : '';
 
   dom.main.innerHTML = `
@@ -289,7 +289,7 @@ export async function renderSearch() {
           </div>
           <div class="panel-body">
             <div class="stack small muted">
-              <p><strong class="small" style="color:var(--text)">1. Descoberta</strong><br>Empresas são buscadas na Google Maps Platform com base no nicho e localização.</p>
+              <p><strong class="small" style="color:var(--text)">1. Descoberta</strong><br>Empresas são buscadas no Google Maps via Apify pelo servidor, com base no nicho e localização.</p>
               <p><strong class="small" style="color:var(--text)">2. Enriquecimento</strong><br>Quando o lead tem site, canais publicados são lidos com proteção contra SSRF. Nada é inventado.</p>
               <p><strong class="small" style="color:var(--text)">3. Qualificação</strong><br>O score explica os pontos fortes e os problemas digitais encontrados.</p>
               <p><strong class="small" style="color:var(--text)">4. Acompanhamento</strong><br>Status, atividades e próximos passos ficam registrados no lead.</p>
@@ -327,7 +327,7 @@ export async function handleSearchSubmit(form) {
       },
     });
     state.activeSearch = response.search;
-    state.activeStats = response.stats;
+    state.activeStats = response.async ? null : response.stats;
     updateSearchStatusPanel();
     document.getElementById('search-status-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     if (response.search.status === 'completed' || response.search.status === 'failed') {

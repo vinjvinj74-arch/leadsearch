@@ -66,6 +66,7 @@ export const ACTIVITY_TYPES = [
 ];
 
 export const SOURCE_LABELS = {
+  apify_google_maps: 'Apify Google Maps',
   google_places: 'Google Places',
   website_enrichment: 'Enriquecimento do site',
   website_check: 'Verificação do site',
@@ -549,9 +550,10 @@ export function applyTheme(preference, persist = true) {
 export function mapsConfigured() {
   const integrations = state.integrations;
   if (!integrations) return null;
+  if (typeof integrations.discoveryConfigured === 'boolean') return integrations.discoveryConfigured;
   if (typeof integrations.googleMapsConfigured === 'boolean') return integrations.googleMapsConfigured;
-  if (integrations.googleMaps && typeof integrations.googleMaps.configured === 'boolean') {
-    return integrations.googleMaps.configured;
+  if (integrations.discovery && typeof integrations.discovery.configured === 'boolean') {
+    return integrations.discovery.configured;
   }
   return null;
 }
@@ -571,14 +573,14 @@ export function paintMapsBadge() {
   dom.mapsBadge.className = 'badge';
   if (configured === true) {
     dom.mapsBadge.classList.add('badge-success');
-    dom.mapsBadge.textContent = 'Maps: configurado';
-    dom.mapsBadge.title = 'Google Maps Platform configurada no servidor.';
+    dom.mapsBadge.textContent = 'Descoberta: ativa';
+    dom.mapsBadge.title = 'Fonte de descoberta de empresas configurada no servidor.';
   } else if (configured === false) {
     dom.mapsBadge.classList.add('badge-warning');
-    dom.mapsBadge.textContent = 'Maps: pendente';
-    dom.mapsBadge.title = 'Defina GOOGLE_MAPS_API_KEY no servidor para habilitar pesquisas reais.';
+    dom.mapsBadge.textContent = 'Descoberta: pendente';
+    dom.mapsBadge.title = 'Defina APIFY_API_TOKEN no servidor para habilitar pesquisas reais.';
   } else {
-    dom.mapsBadge.textContent = 'Maps: verificando';
+    dom.mapsBadge.textContent = 'Descoberta: verificando';
     dom.mapsBadge.title = 'Consultando o estado da integração.';
   }
 }

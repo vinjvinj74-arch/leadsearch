@@ -32,6 +32,7 @@ export interface PlaceResult {
   googleMapsUrl: string | null;
   latitude: number | null;
   longitude: number | null;
+  sourceMetadata?: Record<string, unknown>;
 }
 
 interface PlacesApiResponse {

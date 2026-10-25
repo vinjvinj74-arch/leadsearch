@@ -32,6 +32,14 @@ export const config = {
     .filter(Boolean),
   appUrl: (process.env.APP_URL ?? '').replace(/\/$/, ''),
   googleMapsApiKey: process.env.GOOGLE_MAPS_API_KEY ?? '',
+  apifyApiToken: process.env.APIFY_API_TOKEN ?? '',
+  apify: {
+    actor: 'compass~crawler-google-places',
+    timeoutSeconds: 300,
+    maxWaitMs: 330_000,
+    maxTotalChargeUsd: 1,
+    maxConcurrentRuns: 1,
+  },
   smtp: {
     host: process.env.SMTP_HOST ?? '',
     port: int(process.env.SMTP_PORT, 587),

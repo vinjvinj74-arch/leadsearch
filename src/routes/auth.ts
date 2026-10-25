@@ -8,6 +8,7 @@ import { AppError, badRequest, conflict, unauthorized } from '../lib/errors.js';
 import { asyncHandler } from '../lib/http.js';
 import { requireAuth } from '../middleware/auth.js';
 import { authLimiter } from '../middleware/rateLimit.js';
+import { isApifyConfigured } from '../services/apifyService.js';
 import {
   createSession,
   findUserByEmail,
@@ -185,7 +186,14 @@ authRouter.get(
       user: toAuthUser(user),
       settings: await ensureSettings(user.id),
       integrations: {
-        googleMapsConfigured: Boolean(config.googleMapsApiKey),
+        discoveryConfigured: isApifyConfigured() || Boolean(config.googleMapsApiKey),
+        discoveryProvider: isApifyConfigured()
+          ? 'apify_google_maps'
+          : config.googleMapsApiKey
+            ? 'google_places'
+            : 'none',
+        googleMapsConfigured: isApifyConfigured() || Boolean(config.googleMapsApiKey),
+        apifyConfigured: isApifyConfigured(),
         emailConfigured: isEmailConfigured(),
       },
     });
