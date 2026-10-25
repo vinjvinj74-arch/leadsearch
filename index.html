@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="pt-BR" data-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#08090b" />
+    <meta
+      name="description"
+      content="LeadSearch: encontre empresas, descubra canais de contato e organize oportunidades comerciais."
+    />
+    <title>LeadSearch</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <a class="skip-link" href="#main-view">Pular para o conteudo</a>
+    <div id="toast-region" class="toast-region" aria-live="polite" aria-atomic="false"></div>
+
+    <section id="auth-view" class="auth-shell" hidden>
+      <div class="auth-brand">
+        <div class="brand-mark brand-mark-large" aria-hidden="true">LS</div>
+        <h1>LeadSearch</h1>
+        <p class="auth-tagline">
+          Prospecção comercial com dados reais, origem registrada e foco em oportunidades que podem virar venda.
+        </p>
+        <ul class="auth-features">
+          <li>Descoberta de empresas por nicho e localização</li>
+          <li>Enriquecimento de contatos a partir de fontes públicas autorizadas</li>
+          <li>Pontuação explicável, CRM e histórico comercial</li>
+        </ul>
+        <p class="auth-footnote">
+          Google Maps Platform e SMTP são configurados no servidor. Nenhuma chave privada é exposta no navegador.
+        </p>
+      </div>
+
+      <div class="auth-panel-wrap">
+        <div class="auth-toolbar">
+          <button class="btn btn-ghost btn-icon theme-toggle" type="button" aria-label="Alternar tema">
+            <span class="theme-icon" aria-hidden="true"></span>
+          </button>
+        </div>
+        <div class="auth-card">
+          <div class="auth-tabs" role="tablist" aria-label="Acesso">
+            <button type="button" class="auth-tab is-active" data-auth-tab="login" role="tab" aria-selected="true">
+              Entrar
+            </button>
+            <button type="button" class="auth-tab" data-auth-tab="register" role="tab" aria-selected="false">
+              Criar conta
+            </button>
+          </div>
+
+          <section class="auth-section" data-auth-panel="login">
+            <h2>Bem-vindo de volta</h2>
+            <p class="muted">Acesse sua área de prospecção.</p>
+            <form id="login-form" class="form-stack" novalidate>
+              <label class="field">
+                <span>E-mail</span>
+                <input type="email" name="email" autocomplete="email" required maxlength="254" />
+              </label>
+              <label class="field">
+                <span>Senha</span>
+                <input type="password" name="password" autocomplete="current-password" required maxlength="128" />
+              </label>
+              <p class="form-error" data-error-for="login" role="alert" hidden></p>
+              <button class="btn btn-primary btn-block" type="submit">Entrar</button>
+              <button class="link-button" type="button" data-auth-link="forgot">Esqueci minha senha</button>
+            </form>
+          </section>
+
+          <section class="auth-section" data-auth-panel="register" hidden>
+            <h2>Criar conta</h2>
+            <p class="muted">A conta é isolada: seus leads não ficam visíveis para outros usuários.</p>
+            <form id="register-form" class="form-stack" novalidate>
+              <label class="field">
+                <span>Nome</span>
+                <input type="text" name="name" autocomplete="name" required minlength="2" maxlength="80" />
+              </label>
+              <label class="field">
+                <span>E-mail</span>
+                <input type="email" name="email" autocomplete="email" required maxlength="254" />
+              </label>
+              <label class="field">
+                <span>Senha</span>
+                <input
+                  type="password"
+                  name="password"
+                  autocomplete="new-password"
+                  required
+                  minlength="10"
+                  maxlength="128"
+                />
+                <small class="hint">Mínimo de 10 caracteres, com letras e números.</small>
+              </label>
+              <label class="field">
+                <span>Confirmar senha</span>
+                <input type="password" name="confirmPassword" autocomplete="new-password" required maxlength="128" />
+              </label>
+              <p class="form-error" data-error-for="register" role="alert" hidden></p>
+              <button class="btn btn-primary btn-block" type="submit">Criar conta</button>
+            </form>
+          </section>
+
+          <section class="auth-section" data-auth-panel="forgot" hidden>
+            <h2>Recuperar acesso</h2>
+            <p class="muted">
+              Enviaremos um link de redefinição para o e-mail cadastrado. O envio exige SMTP configurado no servidor.
+            </p>
+            <form id="forgot-form" class="form-stack" novalidate>
+              <label class="field">
+                <span>E-mail</span>
+                <input type="email" name="email" autocomplete="email" required maxlength="254" />
+              </label>
+              <p class="form-error" data-error-for="forgot" role="alert" hidden></p>
+              <p class="form-success" data-success-for="forgot" role="status" hidden></p>
+              <button class="btn btn-primary btn-block" type="submit">Enviar instruções</button>
+              <button class="link-button" type="button" data-auth-link="login">Voltar para o login</button>
+            </form>
+          </section>
+
+          <section class="auth-section" data-auth-panel="reset" hidden>
+            <h2>Nova senha</h2>
+            <p class="muted">Defina uma senha nova e segura para sua conta.</p>
+            <form id="reset-form" class="form-stack" novalidate>
+              <label class="field">
+                <span>Nova senha</span>
+                <input
+                  type="password"
+                  name="password"
+                  autocomplete="new-password"
+                  required
+                  minlength="10"
+                  maxlength="128"
+                />
+              </label>
+              <label class="field">
+                <span>Confirmar nova senha</span>
+                <input type="password" name="confirmPassword" autocomplete="new-password" required maxlength="128" />
+              </label>
+              <p class="form-error" data-error-for="reset" role="alert" hidden></p>
+              <button class="btn btn-primary btn-block" type="submit">Redefinir senha</button>
+              <button class="link-button" type="button" data-auth-link="login">Voltar para o login</button>
+            </form>
+          </section>
+
+          <section class="auth-section" data-auth-panel="verify" hidden>
+            <h2>Verificação de e-mail</h2>
+            <p class="muted" id="verify-message">Processando verificação...</p>
+            <button class="btn btn-primary btn-block" type="button" data-auth-link="login">Ir para o login</button>
+          </section>
+        </div>
+      </div>
+    </section>
+
+    <div id="app-shell" class="app-shell" hidden>
+      <div class="mobile-overlay" id="mobile-overlay" hidden></div>
+      <aside class="sidebar" id="sidebar" aria-label="Navegação principal">
+        <div class="sidebar-head">
+          <a class="brand" href="#/dashboard" aria-label="LeadSearch - Dashboard">
+            <span class="brand-mark" aria-hidden="true">LS</span>
+            <span class="brand-text">
+              <strong>LeadSearch</strong>
+              <small>Prospecção comercial</small>
+            </span>
+          </a>
+        </div>
+        <nav class="nav">
+          <a class="nav-link" href="#/dashboard" data-route="dashboard">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 13h6V4H4v9Zm0 7h6v-5H4v5Zm10 0h6v-9h-6v9Zm0-11h6V4h-6v5Z" /></svg>
+            <span>Dashboard</span>
+          </a>
+          <a class="nav-link" href="#/search" data-route="search">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10.5 4a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13Zm0 2a4.5 4.5 0 1 1 0 9 4.5 4.5 0 0 1 0-9Zm6.2 9.6 4.1 4.1-1.4 1.4-4.1-4.1 1.4-1.4Z" /></svg>
+            <span>Prospecção</span>
+          </a>
+          <a class="nav-link" href="#/leads" data-route="leads">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v3H4V5Zm0 5.5h16v3H4v-3ZM4 16h10v3H4v-3Z" /></svg>
+            <span>Leads</span>
+          </a>
+          <a class="nav-link" href="#/settings" data-route="settings">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8.5A3.5 3.5 0 1 0 12 15.5 3.5 3.5 0 0 0 12 8.5Zm8.2 3.5c0-.5-.1-1-.2-1.5l2-1.5-2-3.4-2.4 1a8 8 0 0 0-2.6-1.5L14.6 2h-4l-.4 2.6a8 8 0 0 0-2.6 1.5l-2.4-1-2 3.4 2 1.5a8.5 8.5 0 0 0 0 3l-2 1.5 2 3.4 2.4-1a8 8 0 0 0 2.6 1.5l.4 2.6h4l.4-2.6a8 8 0 0 0 2.6-1.5l2.4 1 2-3.4-2-1.5c.1-.5.2-1 .2-1.5Z" /></svg>
+            <span>Configurações</span>
+          </a>
+        </nav>
+        <div class="sidebar-foot">
+          <div class="user-chip">
+            <span class="user-avatar" id="user-avatar" aria-hidden="true">LS</span>
+            <span class="user-meta">
+              <strong id="user-name">Usuário</strong>
+              <small id="user-email">—</small>
+            </span>
+          </div>
+          <div class="sidebar-actions">
+            <button class="btn btn-ghost btn-icon theme-toggle" type="button" aria-label="Alternar tema">
+              <span class="theme-icon" aria-hidden="true"></span>
+            </button>
+            <button class="btn btn-ghost" type="button" id="logout-button">Sair</button>
+          </div>
+        </div>
+      </aside>
+
+      <div class="main-shell">
+        <header class="topbar">
+          <button class="btn btn-ghost btn-icon menu-toggle" type="button" id="menu-toggle" aria-label="Abrir menu">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16v2H4V6Zm0 5h16v2H4v-2Zm0 5h16v2H4v-2Z" /></svg>
+          </button>
+          <div class="topbar-title">
+            <h1 id="page-title">Dashboard</h1>
+            <p id="page-subtitle" class="muted">Visão geral da sua prospecção.</p>
+          </div>
+          <div class="topbar-actions">
+            <span class="badge" id="maps-badge" title="Estado da integração Google Maps">Maps: verificando</span>
+            <button class="btn btn-ghost btn-icon theme-toggle" type="button" aria-label="Alternar tema">
+              <span class="theme-icon" aria-hidden="true"></span>
+            </button>
+          </div>
+        </header>
+        <main id="main-view" class="view" tabindex="-1" aria-live="polite"></main>
+      </div>
+    </div>
+
+    <div id="modal-root"></div>
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>

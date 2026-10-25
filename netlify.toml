@@ -1,0 +1,11 @@
+# Defina API_ORIGIN no painel do Netlify com a URL publica do Railway.
+# No Railway, inclua a URL do Netlify em APP_ORIGINS e use-a como APP_URL.
+[build]
+  command = "npm run build:netlify"
+  publish = "dist-netlify"
+
+[build.environment]
+  NODE_VERSION = "22"
+
+[context.production.environment]
+  NODE_ENV = "production"

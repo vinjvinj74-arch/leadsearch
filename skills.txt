@@ -1,0 +1,58 @@
+# LEADSEARCH — ORQUESTRAÇÃO DE SKILLS E DESENVOLVIMENTO PROFISSIONAL
+
+## 1. INSTRUÇÃO PRIORITÁRIA
+
+Antes de escrever qualquer código, examine o projeto existente, identifique as skills disponíveis e leia integralmente as instruções das skills relevantes.
+
+Utilize as skills de desenvolvimento como ferramentas de trabalho durante toda a implementação, não apenas como referência inicial.
+
+**Não invente skills, não presuma que estão instaladas e não ignore instruções existentes.** Se alguma skill solicitada não estiver disponível, procure sua localização conforme os mecanismos oficiais do OpenCode. Se não estiver instalada, informe a ausência e continue com as melhores práticas disponíveis, sem fingir que a utilizou.
+
+Não comece reescrevendo o projeto inteiro. Primeiro compreenda sua estrutura, suas dependências, os serviços conectados e o que já funciona. Preserve implementações válidas.
+
+## 2. SELEÇÃO E APLICAÇÃO DAS SKILLS
+
+Localize e utilize as seguintes capacidades, caso estejam disponíveis:
+
+1. `fullstack-dev`: coordene a implementação completa do produto, integrando frontend, backend e banco de dados.
+2. `typescript-pro`: mantenha tipagem rigorosa, código modular, contratos claros e tratamento de erros consistente.
+3. `express-api`: implemente endpoints, middleware, validação de entrada, autenticação e autorização.
+4. `postgres-patterns`: projete o banco de dados, relacionamentos, índices, consultas e migrações.
+5. `frontend-dev`: desenvolva páginas funcionais, componentes reutilizáveis, navegação e integração com a API.
+6. `ui-ux-design`: defina hierarquia visual, acessibilidade, responsividade e consistência da experiência.
+7. `api-design` ou `API Designer`: padronize endpoints, formatos de resposta, erros e contratos entre frontend e backend.
+8. `secure-code-guardian`: aplique segurança desde o início, incluindo proteção de sessões, validação, isolamento de dados e gestão de segredos.
+9. `architecture-designer`: organize os módulos e estabeleça limites claros entre as responsabilidades do sistema.
+10. `devops-engineer`: prepare configuração de ambiente, inicialização, implantação e observabilidade.
+
+Os nomes são identificadores de referência, não uma garantia de que os arquivos estejam instalados. Confirme os identificadores e os caminhos reais antes de invocá-los.
+
+### Ordem de trabalho
+
+- Antes de definir a estrutura: arquitetura e desenvolvimento full-stack.
+- Ao criar a aplicação: TypeScript e backend/frontend.
+- Ao modelar dados: PostgreSQL.
+- Ao desenhar os contratos: API design.
+- Durante toda a implementação: segurança.
+- Ao preparar execução e implantação: DevOps.
+
+Reutilize as instruções pertinentes ao contexto atual. Não carregue skills sem relação com a tarefa, não repita instruções desnecessariamente e resolva conflitos antes de implementar.
+
+## 3. OBJETIVO DO PROJETO
+
+Desenvolver o LeadSearch, um SaaS de prospecção comercial para encontrar empresas, identificar oportunidades de criação ou melhoria de sites, organizar leads e gerenciar o processo de vendas.
+
+O produto deve ser construído como uma aplicação real, funcional, segura, sustentável e preparada para evolução.
+
+Stack inicial preferencial:
+- TypeScript.
+- Node.js em versão LTS.
+- Express.
+- PostgreSQL.
+- npm.
+- HTML, CSS e JavaScript/TypeScript no frontend, conforme a arquitetura escolhida.
+- Integrações por APIs oficiais e autorizadas.
+
+Frontend e backend devem permanecer no mesmo repositório, com separação modular de responsabilidades. O ponto de entrada inicial do frontend deve ser o `index.html` na raiz, conforme a estrutura existente e a configuração adotada.
+
+Não utilize PHP. Se uma alteração na arquitetura for necessária, justifique antes

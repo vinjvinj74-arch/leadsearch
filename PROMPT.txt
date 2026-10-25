@@ -1,0 +1,888 @@
+# LEADSEARCH — PROMPT MASTER PARA O OPENCODE
+
+## PRIORIDADES ABSOLUTAS — EXECUTAR ANTES DE DESENVOLVER
+
+Você atuará como engenheiro de software sênior, arquiteto de sistemas e responsável pela implementação de um produto SaaS profissional chamado **LeadSearch**.
+
+O objetivo é construir um sistema real, funcional, seguro e sustentável, não um protótipo visual, uma demonstração superficial ou um projeto produzido por vibecoding.
+
+Siga as prioridades abaixo na ordem indicada.
+
+### P0.1 — INSPECIONAR O AMBIENTE E AS CONEXÕES EXISTENTES
+
+Antes de alterar arquivos ou implementar funcionalidades:
+
+1. Inspecione o diretório atual do projeto.
+2. Identifique a estrutura existente, os arquivos, o Git, as dependências e os scripts.
+3. Identifique os serviços externos configurados, incluindo Railway, caso esteja presente.
+4. Verifique quais CLIs estão instaladas e quais autenticações já estão disponíveis.
+5. Identifique variáveis de ambiente, integrações e configurações existentes sem imprimir ou expor credenciais.
+6. Determine quais conexões estão funcionando, expiradas, incorretas ou associadas a outro projeto.
+7. Registre um diagnóstico inicial e proponha a sequência de correção.
+
+Não presuma que o projeto está vazio.
+
+Não sobrescreva código funcional sem necessidade. Não apague bancos de dados, volumes, serviços, projetos remotos ou variáveis de produção durante a inspeção.
+
+### P0.2 — REVALIDAR AS CONEXÕES PELA CLI
+
+Se o projeto estiver associado a uma instância antiga, sessão expirada ou configuração incorreta do Railway, ou de outro serviço necessário, prepare a reconexão utilizando a CLI oficial do provedor.
+
+Para Railway, quando aplicável:
+
+1. Verifique a instalação e a versão da CLI oficial.
+2. Verifique o estado da autenticação.
+3. Se necessário, inicie o fluxo oficial de login pela CLI.
+4. Quando a CLI oferecer autenticação pelo navegador, abra uma nova guia no navegador padrão, usando o mecanismo oficial suportado pela CLI.
+5. Aguarde a conclusão da autenticação pelo usuário quando houver necessidade de interação.
+6. Verifique o resultado da autenticação.
+7. Selecione ou vincule explicitamente o projeto, ambiente e serviço corretos.
+8. Confirme o estado da conexão antes de executar comandos que possam modificar recursos remotos.
+
+O objetivo é evitar depender de uma conexão antiga ou de uma integração quebrada quando a CLI oficial puder restabelecer o acesso.
+
+**Regras obrigatórias:**
+
+- Não invente comandos ou opções da CLI. Consulte `--help` e a documentação oficial quando necessário.
+- Não tente contornar autenticação, MFA, CAPTCHA ou controles de segurança.
+- Não solicite que o usuário cole senhas, tokens privados ou cookies no chat.
+- Não encerre uma conexão remota funcional sem uma justificativa técnica.
+- Não exclua recursos remotos para resolver problemas de autenticação.
+- Não crie projetos, bancos ou serviços duplicados automaticamente.
+- Não associe o projeto a um ambiente de produção sem verificar o destino.
+- Se o navegador não puder ser aberto automaticamente, apresente o comando oficial e as instruções necessárias.
+- Não declare a conexão concluída sem verificar o resultado real.
+
+A autenticação deve ocorrer pelo fluxo oficial do provedor, com intervenção do usuário quando exigida.
+
+### P0.3 — NÃO IMPLEMENTAR SOBRE UMA BASE INDEFINIDA
+
+Antes de desenvolver funcionalidades, produza um diagnóstico breve e um plano de execução.
+
+Identifique:
+
+- O que já existe.
+- O que está quebrado.
+- O que está conectado.
+- O que falta configurar.
+- Quais arquivos serão preservados.
+- Quais mudanças são necessárias.
+- Quais operações dependem de credenciais ou aprovação do usuário.
+
+Depois dessa verificação, prossiga para a implementação sem ficar solicitando confirmação para cada alteração comum e reversível.
+
+Para ações destrutivas, migrações irreversíveis, exclusões remotas ou operações capazes de causar perda de dados, solicite autorização explícita.
+
+### P0.4 — REGRAS TÉCNICAS INEGOCIÁVEIS
+
+- Nome oficial: LeadSearch.
+- Frontend e backend no mesmo repositório.
+- Ponto de entrada inicial do frontend: `index.html` na raiz do projeto.
+- PHP é absolutamente proibido.
+- Priorizar TypeScript e Node.js LTS.
+- Arquitetura monolítica modular.
+- Banco de dados relacional PostgreSQL.
+- API oficial do Google Maps Platform para descoberta de empresas.
+- Módulo de enriquecimento de contatos por fontes autorizadas.
+- Cadastro, login e autenticação reais.
+- Configurações e gerenciamento de conta.
+- Tema claro e escuro.
+- Testes automatizados.
+- Documentação de instalação e operação.
+- Segurança desde o início.
+- Nenhuma funcionalidade P0 poderá ser considerada concluída se for apenas visual ou simulada.
+
+---
+
+# 1. MISSÃO DO PRODUTO
+
+Construa o LeadSearch, uma plataforma de prospecção comercial capaz de encontrar empresas, descobrir canais de contato disponíveis, identificar oportunidades digitais e organizar leads para venda de serviços de criação de sites.
+
+Inicialmente, o produto será utilizado pelo próprio proprietário para prospectar clientes.
+
+A arquitetura deverá permitir uma futura transformação em SaaS comercial, sem desenvolver antecipadamente recursos que não sejam necessários para o uso inicial.
+
+O objetivo central é reduzir o tempo gasto procurando potenciais clientes e aumentar a proporção de empresas encontradas com informações comerciais úteis.
+
+Não confunda volume de dados com qualidade de prospecção.
+
+# 2. PRINCÍPIOS DE ENGENHARIA
+
+O projeto deverá seguir princípios profissionais de desenvolvimento.
+
+- Código organizado e legível.
+- Separação de responsabilidades.
+- Tipagem consistente.
+- Validação no backend.
+- Tratamento centralizado de erros.
+- Dependências justificadas.
+- Segurança por padrão.
+- Configuração reproduzível.
+- Migrações versionadas.
+- Testes automatizados.
+- Logs úteis sem exposição de segredos.
+- Documentação atualizada.
+- Ausência de duplicação desnecessária.
+- Nenhuma dependência de serviços pagos sem necessidade documentada.
+- Nenhuma implementação falsa apresentada como funcional.
+
+Não crie abstrações excessivas, microsserviços desnecessários ou infraestrutura complexa apenas para parecer sofisticado.
+
+A qualidade deverá vir da confiabilidade, da arquitetura adequada, da segurança e da manutenção do sistema.
+
+# 3. TECNOLOGIAS E ARQUITETURA
+
+Adote, preferencialmente:
+
+- TypeScript.
+- Node.js em versão LTS compatível.
+- Express ou alternativa tecnicamente justificada.
+- HTML, CSS e JavaScript/TypeScript para o frontend.
+- PostgreSQL.
+- Biblioteca de acesso ao banco com consultas parametrizadas e migrações.
+- npm.
+- Testes automatizados adequados ao stack.
+- ESLint e Prettier, se compatíveis com a configuração escolhida.
+
+O frontend e o backend ficarão no mesmo repositório, mas terão responsabilidades separadas.
+
+A arquitetura deverá contemplar:
+
+- Interface do usuário.
+- API HTTP.
+- Autenticação.
+- Autorização.
+- Serviços de negócio.
+- Integrações externas.
+- Acesso a dados.
+- Migrações.
+- Validação.
+- Logs.
+- Testes.
+- Configuração de ambiente.
+
+Crie uma estrutura de diretórios coerente com essas responsabilidades.
+
+Não instale frameworks, bibliotecas ou serviços apenas por preferência pessoal.
+
+# 4. INDEX.HTML COMO PONTO DE ENTRADA
+
+O desenvolvimento deverá começar pela criação ou adaptação do arquivo `index.html` na raiz do projeto.
+
+A página deverá ser a entrada da aplicação real, e não uma landing page independente.
+
+O frontend poderá utilizar arquivos externos para estilos, scripts e componentes.
+
+A aplicação deverá ter:
+
+- Layout base.
+- Navegação principal.
+- Estrutura de dashboard.
+- Área de pesquisa.
+- Lista de leads.
+- Detalhes do lead.
+- Configurações.
+- Estados de carregamento.
+- Estados vazios.
+- Mensagens de erro.
+- Controle de autenticação.
+
+Se já houver um frontend funcional, preserve o que puder ser aproveitado.
+
+O servidor deverá servir a interface de forma consistente com a arquitetura adotada.
+
+Não use PHP em nenhuma etapa.
+
+# 5. IDENTIDADE VISUAL DO LEADSEARCH
+
+Crie uma interface minimalista, profissional e consistente.
+
+## Paleta
+
+Tema escuro:
+
+- Fundo principal preto ou quase preto.
+- Superfícies em cinza muito escuro.
+- Texto principal branco suave.
+- Texto secundário em cinza.
+- Bordas discretas.
+- Uma cor de destaque moderada para ações principais e estados relevantes.
+
+Tema claro:
+
+- Fundo branco ou cinza muito claro.
+- Superfícies claras.
+- Texto principal escuro.
+- Bordas discretas.
+- A mesma cor de destaque do tema escuro.
+
+Não utilize gradientes exagerados, excesso de cores, animações pesadas, efeitos decorativos ou aparência genérica de template.
+
+## Sistema visual
+
+Defina tokens reutilizáveis para:
+
+- Cores.
+- Tipografia.
+- Espaçamento.
+- Bordas.
+- Raios.
+- Sombras.
+- Estados de interação.
+- Foco acessível.
+- Mensagens de sucesso e erro.
+
+Utilize componentes visuais consistentes.
+
+A interface deverá funcionar em computadores e telas menores, mantendo a produtividade como prioridade.
+
+Evite tabelas excessivamente largas e elementos que prejudiquem a navegação.
+
+# 6. AUTENTICAÇÃO E CONTA DO USUÁRIO
+
+Implemente autenticação real.
+
+Funcionalidades obrigatórias:
+
+- Cadastro.
+- Login.
+- Logout.
+- Recuperação de senha.
+- Redefinição segura de senha.
+- Verificação de e-mail quando configurada.
+- Sessões persistentes e seguras.
+- Proteção das rotas privadas.
+- Alteração de senha.
+- Perfil do usuário.
+- Encerramento de sessões quando necessário.
+- Tratamento de sessões expiradas.
+- Limitação de tentativas de autenticação.
+
+Utilize uma solução consolidada ou implemente o mecanismo com controles de segurança documentados.
+
+Nunca armazene senhas em texto puro.
+
+Se o armazenamento de senhas for próprio, utilize Argon2id com parâmetros apropriados.
+
+Se utilizar cookies de sessão, configure HttpOnly, Secure em produção e SameSite adequado, além da proteção CSRF quando aplicável.
+
+Não armazene tokens de sessão sensíveis em localStorage.
+
+Não permita que o frontend determine unilateralmente a identidade ou as permissões do usuário.
+
+O backend deverá verificar as permissões em cada operação protegida.
+
+# 7. ÁREA DE CONFIGURAÇÕES
+
+Implemente uma área de configurações organizada por categorias.
+
+## Conta
+
+- Nome de exibição.
+- E-mail.
+- Alteração de senha.
+- Estado da verificação de e-mail.
+- Sessões, quando aplicável.
+- Encerramento de sessão.
+- Preferências da conta.
+
+## Aparência
+
+- Tema claro.
+- Tema escuro.
+- Tema do sistema.
+- Persistência da preferência.
+- Aplicação consistente do tema em todas as telas.
+
+## Integrações
+
+- Estado da conexão com a Google Maps Platform.
+- Estado das demais fontes configuradas.
+- Teste de conectividade quando possível.
+- Mensagens claras sobre configurações ausentes.
+- Limites operacionais.
+- Diagnóstico sem exposição de credenciais.
+
+## Prospecção
+
+- Limites por pesquisa.
+- Preferências de classificação.
+- Nichos favoritos.
+- Configurações padrão de localização.
+- Preferências de exportação.
+- Regras de não contato.
+
+## Dados e privacidade
+
+- Política de retenção aplicável.
+- Exclusão de dados quando permitida.
+- Exportação dos dados próprios.
+- Informações sobre integrações.
+- Preferências de privacidade.
+
+## Sistema
+
+- Versão da aplicação.
+- Estado dos serviços.
+- Estado do banco.
+- Diagnóstico de erros.
+- Informações operacionais não sensíveis.
+
+Não apresente configurações que não estejam implementadas.
+
+# 8. DESCOBERTA DE EMPRESAS
+
+Implemente a pesquisa de empresas por:
+
+- Cidade.
+- Estado.
+- País.
+- Nicho.
+- Termos de pesquisa.
+- Região.
+- Raio, quando suportado.
+- Limite de resultados.
+
+Exemplos:
+
+- Clínicas de estética em Campinas.
+- Oficinas mecânicas em Sumaré.
+- Dentistas em Americana.
+- Empresas de ar-condicionado em Hortolândia.
+- Marcenarias em São Paulo.
+
+Utilize a Google Maps Platform, especialmente a Places API, como fonte inicial.
+
+Documentação oficial:
+
+https://developers.google.com/maps/documentation/places/web-service
+
+Solicite somente os campos necessários.
+
+Respeite limites, custos, termos de uso e políticas de armazenamento.
+
+Não utilize scraping do Google Maps para contornar as limitações da API.
+
+# 9. COLETA MULTIFONTE E SCRAPING RESPONSÁVEL
+
+O sistema deverá possuir uma arquitetura modular para adicionar fontes de descoberta e enriquecimento de contatos.
+
+Crie uma interface comum para os conectores, permitindo que diferentes fontes sejam utilizadas sem acoplar toda a aplicação a um único fornecedor.
+
+Considere:
+
+- Google Maps Platform para descoberta de estabelecimentos.
+- Mecanismos de busca com APIs autorizadas.
+- Diretórios empresariais que permitam uso automatizado.
+- Sites oficiais das empresas.
+- Páginas públicas de contato, quando o acesso automatizado for permitido.
+- Outras fontes comerciais licenciadas, caso sejam adicionadas futuramente.
+
+## Enriquecimento de contatos
+
+Para cada empresa, tente identificar, quando disponível e permitido:
+
+- Telefone comercial.
+- E-mail comercial publicado.
+- Site oficial.
+- Domínio.
+- Endereço.
+- Página comercial.
+- Formulário de contato.
+- Fonte de cada informação.
+
+A ausência de um dado deverá ser registrada como ausência ou informação desconhecida, nunca inventada.
+
+## Scraping de sites públicos
+
+Quando autorizado, o módulo deverá conseguir:
+
+- Acessar a página inicial.
+- Localizar links de contato.
+- Identificar e-mails publicados.
+- Identificar telefones publicados.
+- Encontrar páginas de serviços.
+- Encontrar páginas institucionais.
+- Registrar a origem e a data da coleta.
+- Aplicar limites de requisições.
+- Respeitar restrições de acesso aplicáveis.
+
+Não implemente mecanismos para contornar CAPTCHAs, bloqueios, autenticação ou controles de acesso.
+
+Não utilize scraping indiscriminado de redes sociais.
+
+Não trate a presença de um número como prova de que ele possui WhatsApp.
+
+Não garanta que todos os leads terão e-mail ou telefone.
+
+# 10. VERIFICADOR DE SITES
+
+Implemente um módulo para verificar sites conhecidos.
+
+Ele deverá avaliar, dentro de limites razoáveis:
+
+- Resolução do domínio.
+- Resposta HTTP.
+- Redirecionamentos.
+- Uso de HTTPS.
+- Tempo de resposta.
+- Erros aparentes.
+- Disponibilidade momentânea.
+- Indicadores técnicos básicos.
+
+Não conclua que um site é definitivamente ruim apenas porque uma consulta falhou.
+
+Inclua proteção contra SSRF:
+
+- Bloqueio de endereços locais e privados.
+- Bloqueio de serviços internos e metadados de nuvem.
+- Validação de URLs.
+- Validação de todos os redirecionamentos.
+- Limites de redirecionamento.
+- Timeouts.
+- Restrições de portas.
+- Limites de tamanho das respostas.
+- Controle de concorrência.
+
+# 11. QUALIFICAÇÃO DOS LEADS
+
+Implemente uma pontuação configurável de 0 a 100.
+
+Considere:
+
+- Ausência de site próprio confirmada.
+- Telefone comercial disponível.
+- E-mail comercial disponível.
+- Atividade empresarial aparente.
+- Segmento com potencial comercial.
+- Presença digital limitada.
+- Problemas técnicos encontrados.
+- Informações suficientes para personalizar uma abordagem.
+
+A pontuação deverá ter justificativas visíveis.
+
+Dados ausentes não deverão ser tratados como prova negativa.
+
+A classificação será uma heurística operacional, não uma previsão científica de conversão.
+
+Permita revisão manual.
+
+# 12. LISTA E DETALHES DOS LEADS
+
+A lista deverá apresentar:
+
+- Empresa.
+- Segmento.
+- Cidade.
+- Telefone.
+- E-mail.
+- Site.
+- Situação digital.
+- Pontuação.
+- Status comercial.
+- Data da última verificação.
+
+Implemente:
+
+- Busca textual.
+- Filtros.
+- Ordenação.
+- Paginação.
+- Seleção de leads.
+- Detalhes individuais.
+- Registro de observações.
+- Histórico comercial.
+- Origem dos dados.
+- Atualização dos campos editáveis.
+
+Utilize paginação no servidor.
+
+Não carregue todos os registros de uma vez.
+
+# 13. DEDUPLICAÇÃO
+
+Evite cadastrar a mesma empresa repetidamente.
+
+Utilize, conforme disponibilidade e permissões:
+
+- Identificador do estabelecimento.
+- Domínio normalizado.
+- Telefone normalizado.
+- Nome e endereço como critérios auxiliares.
+
+Não una empresas distintas apenas por nomes semelhantes.
+
+Não apague históricos comerciais ao atualizar um lead.
+
+# 14. CRM E FUNIL COMERCIAL
+
+Implemente os estados:
+
+- Novo.
+- Qualificado.
+- Contatado.
+- Aguardando resposta.
+- Respondeu.
+- Reunião agendada.
+- Proposta enviada.
+- Em negociação.
+- Vendido.
+- Perdido.
+- Não contatar.
+
+Registre:
+
+- Data.
+- Observação.
+- Ação executada.
+- Resultado.
+- Próxima ação.
+
+A preferência de não contato deverá ser respeitada em futuras ações automatizadas.
+
+Não implemente disparos em massa como requisito inicial.
+
+# 15. DASHBOARD
+
+Crie um dashboard funcional com:
+
+- Total de leads.
+- Leads sem site.
+- Leads com oportunidades técnicas.
+- Leads qualificados.
+- Contatos realizados.
+- Respostas recebidas.
+- Propostas.
+- Vendas.
+- Conversão, quando houver dados suficientes.
+
+Os indicadores deverão ser calculados a partir de dados reais.
+
+Não apresente números fictícios como resultados do usuário.
+
+Se não houver dados, mostre estados vazios informativos.
+
+# 16. BANCO DE DADOS
+
+Utilize PostgreSQL.
+
+Projete entidades adequadas para:
+
+- Usuários.
+- Sessões ou mecanismos equivalentes de autenticação.
+- Leads.
+- Pesquisas.
+- Resultados de pesquisas.
+- Verificações de sites.
+- Histórico comercial.
+- Observações.
+- Preferências de não contato.
+- Configurações.
+- Logs operacionais, quando necessários.
+
+Defina chaves, índices, restrições, relações, migrações e políticas de retenção.
+
+Implemente isolamento dos dados por usuário desde o início, mesmo que a primeira utilização seja pessoal.
+
+Um usuário não poderá consultar ou alterar dados privados de outro usuário por meio de alterações nos parâmetros da API.
+
+As regras de persistência de dados de terceiros deverão respeitar as políticas de cada fonte.
+
+# 17. API DO BACKEND
+
+Defina endpoints documentados para:
+
+- Saúde da aplicação.
+- Cadastro e autenticação.
+- Conta e preferências.
+- Pesquisa de empresas.
+- Status das pesquisas.
+- Consulta de resultados.
+- Listagem de leads.
+- Detalhes e atualização de leads.
+- Verificação de sites.
+- Histórico comercial.
+- Observações.
+- Exportação.
+- Configurações.
+- Diagnóstico operacional.
+
+Cada endpoint deverá ter contratos de entrada e saída, validações, códigos HTTP e regras de autorização.
+
+O frontend nunca deverá ser a única camada de validação.
+
+# 18. SEGURANÇA E PRIVACIDADE
+
+Inclua:
+
+- Validação de entradas.
+- Consultas parametrizadas.
+- Proteção contra SQL injection.
+- Proteção contra XSS.
+- Proteção CSRF quando aplicável.
+- Rate limiting.
+- Gestão segura de sessões.
+- Autorização por usuário.
+- Headers de segurança.
+- Controle de CORS.
+- Proteção SSRF.
+- Segredos em variáveis de ambiente.
+- Logs sem credenciais.
+- Política de dependências.
+- Backup e recuperação.
+- Tratamento seguro de erros.
+- Minimização e retenção de dados.
+- Considerações de LGPD.
+
+Nunca coloque chaves privadas no frontend.
+
+Não versionar arquivos `.env`.
+
+Crie um `.env.example` sem segredos reais.
+
+# 19. EXPORTAÇÃO
+
+Implemente exportação CSV dos dados permitidos.
+
+Inclua:
+
+- Seleção de campos.
+- Normalização.
+- Tratamento de caracteres.
+- Compatibilidade com planilhas.
+- Proteção contra CSV injection.
+- Respeito às regras das fontes.
+- Limites de exportação.
+
+Não exporte automaticamente informações desnecessárias ou restritas.
+
+# 20. CUSTOS E CONTROLE OPERACIONAL
+
+O sistema deverá informar quando uma operação utilizar serviços que podem gerar cobrança.
+
+Implemente limites por pesquisa e controles contra consultas acidentais de grande volume.
+
+Registre informações operacionais de consumo quando tecnicamente disponíveis.
+
+Não presuma que APIs externas sejam gratuitas.
+
+Não realize consultas ilimitadas em segundo plano.
+
+Não crie automaticamente contas ou serviços pagos.
+
+Não faça deploy em produção nem altere infraestrutura remota sem verificar o destino e as permissões necessárias.
+
+# 21. TESTES E CRITÉRIOS DE QUALIDADE
+
+Implemente testes para:
+
+- Autenticação.
+- Autorização.
+- Isolamento entre usuários.
+- Banco de dados.
+- Migrações.
+- API.
+- Deduplicação.
+- Pontuação.
+- Verificador de sites.
+- SSRF.
+- Exportação.
+- Integrações.
+- Fluxos essenciais do frontend.
+
+Utilize mocks para APIs externas durante testes automatizados.
+
+Os testes não deverão depender de uma chave real do Google Maps.
+
+Não considere uma funcionalidade concluída somente porque a interface está renderizando.
+
+Verifique a persistência, os contratos da API, os estados de erro e o funcionamento real.
+
+# 22. INSTALAÇÃO E EXECUÇÃO
+
+O projeto deverá ser executável em ambiente Windows.
+
+Documente:
+
+- Pré-requisitos.
+- Instalação de dependências.
+- Configuração do ambiente.
+- Configuração do PostgreSQL.
+- Migrações.
+- Execução em desenvolvimento.
+- Build.
+- Testes.
+- Execução em produção.
+- Configuração das APIs externas.
+- Diagnóstico de problemas.
+
+Docker poderá ser utilizado para simplificar o banco, mas não deverá ser obrigatório sem justificativa.
+
+Crie scripts claros no `package.json`.
+
+# 23. ESTRUTURA E DOCUMENTAÇÃO
+
+Crie os arquivos de documentação necessários, incluindo:
+
+- `README.md`.
+- `PRD.md`.
+- `.env.example`.
+- Instruções de instalação.
+- Instruções de configuração.
+- Documentação da API.
+- Arquitetura.
+- Decisões técnicas relevantes.
+- Procedimentos de teste.
+- Procedimentos de diagnóstico.
+
+Não sobrescreva documentação existente sem necessidade.
+
+Se o PRD original estiver presente, preserve-o e registre alterações de escopo de maneira clara.
+
+# 24. ORDEM DE IMPLEMENTAÇÃO
+
+Implemente nesta ordem:
+
+**Fase 1 — Diagnóstico e ambiente**
+- Inspeção do projeto.
+- Verificação das CLIs.
+- Diagnóstico das conexões.
+- Correção de autenticações necessárias.
+- Estrutura inicial.
+- `index.html`.
+
+**Fase 2 — Fundação**
+- Configuração TypeScript.
+- Backend.
+- Banco de dados.
+- Migrações.
+- Validação.
+- Logs.
+- Testes iniciais.
+
+**Fase 3 — Autenticação**
+- Cadastro.
+- Login.
+- Logout.
+- Sessões.
+- Recuperação de senha.
+- Proteção de rotas.
+- Isolamento de usuários.
+
+**Fase 4 — Interface**
+- Layout.
+- Navegação.
+- Tema claro e escuro.
+- Dashboard.
+- Lista de leads.
+- Detalhes.
+- Configurações.
+
+**Fase 5 — Descoberta**
+- Integração com Google Maps.
+- Pesquisa por nicho e localização.
+- Tratamento de resultados.
+- Limites de consumo.
+- Deduplicação.
+
+**Fase 6 — Enriquecimento**
+- Verificação de sites.
+- Coleta autorizada em páginas públicas.
+- Identificação de contatos.
+- Registro de fontes.
+- Classificação das oportunidades.
+
+**Fase 7 — CRM**
+- Estados comerciais.
+- Histórico.
+- Observações.
+- Não contatar.
+- Exportação.
+
+**Fase 8 — Qualidade**
+- Testes de integração.
+- Testes de segurança.
+- Correção de falhas.
+- Verificação de desempenho.
+- Documentação final.
+
+Não avance ignorando falhas críticas das fases anteriores.
+
+# 25. CRITÉRIOS PARA CONSIDERAR O MVP CONCLUÍDO
+
+O MVP somente estará concluído quando:
+
+1. O sistema iniciar conforme a documentação.
+2. A `index.html` abrir a aplicação real.
+3. O frontend e o backend funcionarem no mesmo projeto.
+4. O cadastro e o login forem reais.
+5. As rotas privadas forem protegidas.
+6. O isolamento entre usuários estiver testado.
+7. O banco persistir os dados.
+8. A integração com a API funcionar com credenciais válidas.
+9. A aplicação tratar credenciais ausentes de forma clara.
+10. As pesquisas reais retornarem resultados quando o serviço estiver disponível.
+11. Os leads puderem ser consultados e classificados.
+12. O sistema identificar oportunidades sem inventar informações.
+13. O enriquecimento registrar a origem dos dados.
+14. O CRM preservar o histórico.
+15. A exportação funcionar.
+16. Os temas claro e escuro funcionarem em todas as telas.
+17. A área de configurações persistir as preferências aplicáveis.
+18. Os testes automatizados relevantes passarem.
+19. Os segredos não aparecerem no frontend ou nos logs.
+20. O projeto não utilizar PHP.
+21. As conexões externas estiverem documentadas e verificadas.
+22. Nenhum requisito P0 estiver implementado apenas como placeholder.
+
+# 26. REGRAS DE EXECUÇÃO DO AGENTE
+
+Trabalhe de forma incremental.
+
+Antes de modificar um arquivo, compreenda sua finalidade.
+
+Após cada fase:
+
+1. Execute os testes pertinentes.
+2. Verifique erros de compilação.
+3. Verifique a inicialização.
+4. Corrija as falhas.
+5. Atualize a documentação.
+6. Registre o progresso real.
+
+Não afirme que uma operação foi realizada sem verificar seu resultado.
+
+Não invente saídas de comandos.
+
+Não simule autenticações ou integrações reais.
+
+Não substitua serviços funcionais por mocks fora dos ambientes de teste.
+
+Não remova funcionalidades úteis sem justificativa.
+
+Não deixe erros conhecidos para trás e continue como se tudo estivesse funcionando.
+
+Não gere o projeto inteiro em uma única tentativa sem validação intermediária.
+
+Não solicite autorização para cada tarefa comum, reversível e já prevista neste documento. Execute essas tarefas de forma autônoma dentro do escopo autorizado.
+
+Solicite autorização antes de ações destrutivas, exclusões remotas, alterações irreversíveis ou operações que possam comprometer dados ou recursos de produção.
+
+# 27. ENTREGA FINAL
+
+Ao concluir cada fase, informe:
+
+- O que foi implementado.
+- Quais arquivos foram criados ou alterados.
+- Quais testes foram executados.
+- Quais testes passaram ou falharam.
+- Quais integrações estão realmente conectadas.
+- Quais configurações ainda dependem do usuário.
+- Quais problemas permanecem.
+- Qual é a próxima etapa.
+
+Ao concluir o MVP, forneça um relatório técnico final com evidências verificáveis de funcionamento.
+
+O resultado esperado é um produto real chamado LeadSearch, com arquitetura consistente, interface profissional, autenticação funcional, coleta multifonte, enriquecimento de contatos, CRM e documentação adequada.
+
+A prioridade é construir software confiável e útil para prospecção comercial, com qualidade de engenharia suficiente para evoluir para um negócio SaaS sustentável.
