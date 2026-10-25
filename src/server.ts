@@ -4,6 +4,7 @@ import { config } from './config.js';
 import { migrateDatabase } from './db/migrate.js';
 import { closePool } from './db/pool.js';
 import { logger } from './lib/logger.js';
+import { recoverStaleRadarSearches } from './services/radarService.js';
 import { recoverStaleSearches } from './services/searchService.js';
 
 async function start(): Promise<void> {
@@ -23,6 +24,9 @@ async function start(): Promise<void> {
 
   await recoverStaleSearches().catch((error) => {
     logger.warn({ err: error }, 'Falha ao recuperar pesquisas antigas');
+  });
+  await recoverStaleRadarSearches().catch((error) => {
+    logger.warn({ err: error }, 'Falha ao recuperar pesquisas do Radar antigas');
   });
 
   const app = createApp();

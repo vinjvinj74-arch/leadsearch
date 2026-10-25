@@ -114,6 +114,10 @@ export const DEFAULT_WEIGHTS = {
 };
 
 export const ROUTES = {
+  radar: {
+    title: 'Radar',
+    subtitle: 'Encontre oportunidades por localização, segmento e presença digital.',
+  },
   dashboard: { title: 'Dashboard', subtitle: 'Visão geral da sua prospecção.' },
   search: { title: 'Prospecção', subtitle: 'Encontre empresas e enriqueça contatos com dados públicos.' },
   leads: { title: 'Leads', subtitle: 'Filtre, qualifique e acompanhe cada oportunidade.' },

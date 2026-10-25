@@ -7,7 +7,7 @@ const APIFY_BASE = 'https://api.apify.com/v2';
 const NOMINATIM_ENDPOINT = 'https://nominatim.openstreetmap.org/search';
 const POLL_INTERVAL_MS = 3000;
 
-interface ApifyRun {
+export interface ApifyRun {
   id: string;
   status: string;
   defaultDatasetId?: string | null;
@@ -38,6 +38,29 @@ interface ApifyPlaceItem {
   cid?: string;
   scrapedAt?: string;
   searchString?: string;
+}
+
+export interface RadarApifyPlace {
+  placeId: string | null;
+  name: string;
+  address: string | null;
+  neighborhood: string | null;
+  city: string | null;
+  state: string | null;
+  country: string | null;
+  postalCode: string | null;
+  phone: string | null;
+  website: string | null;
+  category: string | null;
+  categories: string[];
+  rating: number | null;
+  reviewsCount: number | null;
+  businessStatus: string | null;
+  googleMapsUrl: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  scrapedAt: string | null;
+  raw: Record<string, unknown>;
 }
 
 interface ApifyUserResponse {
@@ -78,11 +101,7 @@ export function reserveApifyRun(): () => void {
   };
 }
 
-async function apifyRequest(
-  path: string,
-  init: RequestInit = {},
-  timeoutMs = 30_000,
-): Promise<Response> {
+async function apifyRequest(path: string, init: RequestInit = {}, timeoutMs = 30_000): Promise<Response> {
   const token = requireToken();
   const headers = new Headers(init.headers);
   headers.set('Authorization', `Bearer ${token}`);
@@ -91,9 +110,10 @@ async function apifyRequest(
     headers.set('Content-Type', 'application/json');
   }
 
+  const endpoint = /^https?:\/\//i.test(path) ? path : `${APIFY_BASE}${path}`;
   let response: Response;
   try {
-    response = await fetch(`${APIFY_BASE}${path}`, {
+    response = await fetch(endpoint, {
       ...init,
       headers,
       signal: AbortSignal.timeout(timeoutMs),
@@ -239,7 +259,7 @@ export async function startSearchRun(
   url.searchParams.set('timeout', String(config.apify.timeoutSeconds));
   url.searchParams.set('maxTotalChargeUsd', String(config.apify.maxTotalChargeUsd));
 
-  const response = await apifyRequest(`${url.pathname}${url.search}`, {
+  const response = await apifyRequest(url.toString(), {
     method: 'POST',
     body: JSON.stringify(input),
   });
@@ -264,10 +284,10 @@ async function getRun(runId: string): Promise<ApifyRun> {
   return payload.data;
 }
 
-async function abortRun(runId: string): Promise<void> {
+export async function abortActorRun(runId: string): Promise<void> {
   try {
     await apifyRequest(`/actor-runs/${encodeURIComponent(runId)}/abort`, { method: 'POST' }, 15_000);
-    logger.warn({ runId }, 'Execucao do Apify abortada por tempo limite local');
+    logger.warn({ runId }, 'Execucao do Apify abortada');
   } catch (error) {
     logger.warn({ err: error, runId }, 'Falha ao abortar execucao do Apify');
   }
@@ -289,7 +309,7 @@ export async function waitForSearchRun(runId: string): Promise<ApifyRun> {
     }
 
     if (Date.now() - startedAt > config.apify.maxWaitMs) {
-      await abortRun(runId);
+      await abortActorRun(runId);
       throw upstreamError('Tempo limite excedido aguardando o Apify. A execucao foi interrompida.');
     }
 
@@ -338,7 +358,7 @@ export async function fetchSearchResults(datasetId: string, limit: number): Prom
   url.searchParams.set('clean', 'true');
   url.searchParams.set('limit', String(Math.min(Math.max(limit, 1), 20)));
 
-  const response = await apifyRequest(`${url.pathname}${url.search}`, {}, 30_000);
+  const response = await apifyRequest(url.toString(), {}, 30_000);
   const payload = (await response.json().catch(() => null)) as unknown;
   if (!Array.isArray(payload)) {
     throw upstreamError('O Apify retornou resultados em formato invalido.');
@@ -347,6 +367,101 @@ export async function fetchSearchResults(datasetId: string, limit: number): Prom
   return payload
     .map((item) => mapPlace(item as ApifyPlaceItem))
     .filter((item): item is PlaceResult => item !== null)
+    .slice(0, limit);
+}
+
+export async function startRadarRun(
+  input: Record<string, unknown>,
+  maxItems: number,
+): Promise<{ runId: string; status: string; datasetId: string | null }> {
+  const url = new URL(`${APIFY_BASE}/acts/${config.apify.actor}/runs`);
+  url.searchParams.set('timeout', String(config.apify.timeoutSeconds));
+  url.searchParams.set('maxTotalChargeUsd', String(config.apify.maxTotalChargeUsd));
+  url.searchParams.set('maxItems', String(Math.min(Math.max(Math.trunc(maxItems), 1), 20)));
+
+  const response = await apifyRequest(url.toString(), {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+  const payload = (await response.json().catch(() => ({}))) as ApifyRunResponse;
+  const run = payload.data;
+  if (!run?.id) {
+    throw upstreamError('O Apify iniciou a execucao sem retornar um identificador valido.');
+  }
+  return {
+    runId: run.id,
+    status: run.status,
+    datasetId: run.defaultDatasetId ?? null,
+  };
+}
+
+function numberOrNull(value: unknown): number | null {
+  return typeof value === 'number' && Number.isFinite(value) ? value : null;
+}
+
+function stringOrNull(value: unknown): string | null {
+  return typeof value === 'string' && value.trim() ? value.trim() : null;
+}
+
+function mapRadarPlace(item: Record<string, unknown>): RadarApifyPlace | null {
+  const name = stringOrNull(item.title);
+  if (!name) return null;
+
+  const location = item.location as { lat?: unknown; lng?: unknown } | undefined;
+  const rawLat = numberOrNull(location?.lat);
+  const rawLng = numberOrNull(location?.lng);
+  const latitude = rawLat !== null && rawLat >= -90 && rawLat <= 90 ? rawLat : null;
+  const longitude = rawLng !== null && rawLng >= -180 && rawLng <= 180 ? rawLng : null;
+  const categories = Array.isArray(item.categories)
+    ? item.categories.filter((value): value is string => typeof value === 'string').slice(0, 20)
+    : [];
+  const permanentlyClosed = item.permanentlyClosed === true;
+  const temporarilyClosed = item.temporarilyClosed === true;
+  const businessStatus = permanentlyClosed
+    ? 'CLOSED_PERMANENTLY'
+    : temporarilyClosed
+      ? 'CLOSED_TEMPORARILY'
+      : 'OPERATIONAL';
+
+  return {
+    placeId: stringOrNull(item.placeId) || stringOrNull(item.fid) || stringOrNull(item.cid),
+    name,
+    address: stringOrNull(item.address),
+    neighborhood: stringOrNull(item.neighborhood),
+    city: stringOrNull(item.city),
+    state: stringOrNull(item.state),
+    country: stringOrNull(item.countryCode),
+    postalCode: stringOrNull(item.postalCode),
+    phone: stringOrNull(item.phoneUnformatted) || stringOrNull(item.phone),
+    website: stringOrNull(item.website),
+    category: stringOrNull(item.categoryName) || categories[0] || null,
+    categories,
+    rating: numberOrNull(item.totalScore),
+    reviewsCount: numberOrNull(item.reviewsCount),
+    businessStatus,
+    googleMapsUrl: stringOrNull(item.url),
+    latitude,
+    longitude,
+    scrapedAt: stringOrNull(item.scrapedAt),
+    raw: item,
+  };
+}
+
+export async function fetchRadarResults(datasetId: string, limit: number): Promise<RadarApifyPlace[]> {
+  const url = new URL(`${APIFY_BASE}/datasets/${encodeURIComponent(datasetId)}/items`);
+  url.searchParams.set('format', 'json');
+  url.searchParams.set('clean', 'true');
+  url.searchParams.set('limit', String(Math.min(Math.max(limit, 1), 20)));
+
+  const response = await apifyRequest(url.toString(), {}, 30_000);
+  const payload = (await response.json().catch(() => null)) as unknown;
+  if (!Array.isArray(payload)) {
+    throw upstreamError('O Apify retornou resultados em formato invalido.');
+  }
+
+  return payload
+    .map((item) => mapRadarPlace(item as Record<string, unknown>))
+    .filter((item): item is RadarApifyPlace => item !== null)
     .slice(0, limit);
 }
 

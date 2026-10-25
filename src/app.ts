@@ -5,6 +5,7 @@ import { accountRouter } from './routes/account.js';
 import { authRouter } from './routes/auth.js';
 import { dashboardRouter } from './routes/dashboard.js';
 import { leadsRouter } from './routes/leads.js';
+import { radarRouter } from './routes/radar.js';
 import { searchesRouter } from './routes/searches.js';
 import { integrationsRouter, settingsRouter } from './routes/settings.js';
 import { healthRouter, systemRouter } from './routes/system.js';
@@ -37,6 +38,7 @@ export function createApp(): express.Express {
   app.use('/api/integrations', integrationsRouter);
   app.use('/api/system', systemRouter);
   app.use('/api/searches', searchesRouter);
+  app.use('/api/radar', radarRouter);
   app.use('/api/leads', leadsRouter);
   app.use('/api/dashboard', dashboardRouter);
 

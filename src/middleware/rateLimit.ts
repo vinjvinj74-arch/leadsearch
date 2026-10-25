@@ -32,6 +32,15 @@ export const searchLimiter = rateLimit({
   handler: jsonHandler('Limite de pesquisas por hora excedido. Aguarde antes de realizar novas consultas.'),
 });
 
+export const geocodeLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 120,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  keyGenerator: (req: Request) => req.user?.id ?? req.ip ?? 'anon',
+  handler: jsonHandler('Muitas consultas de localizacao. Aguarde alguns instantes.'),
+});
+
 export const exportLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   limit: 20,

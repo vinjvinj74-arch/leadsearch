@@ -119,10 +119,10 @@ function scorePlace(
   );
 }
 
-async function insertOrUpdateLead(
+export async function upsertLeadFromPlace(
   client: PoolClient,
   userId: string,
-  searchId: string,
+  searchId: string | null,
   place: PlaceResult,
   weights: Partial<ScoreWeights> | null,
   location: { city: string; state: string | null; country: string },
@@ -170,6 +170,8 @@ async function insertOrUpdateLead(
         website_status = $18,
         score = $19,
         score_reasons = $20,
+        latitude = COALESCE($21, latitude),
+        longitude = COALESCE($22, longitude),
         updated_at = now()
        WHERE id = $1 AND user_id = $2
        RETURNING *`,
@@ -194,6 +196,8 @@ async function insertOrUpdateLead(
         nextWebsiteStatus,
         scored.score,
         JSON.stringify(scored.reasons),
+        place.latitude,
+        place.longitude,
       ],
     );
     await client.query(
@@ -221,12 +225,12 @@ async function insertOrUpdateLead(
       user_id, search_id, place_id, name, normalized_name, segment, city, state, country,
       address, normalized_address, phone, normalized_phone, website, normalized_domain,
       google_maps_url, rating, reviews_count, business_status, score, score_reasons,
-      website_status, status
+      website_status, status, latitude, longitude
     ) VALUES (
       $1, $2, $3, $4, $5, $6, $7, $8, $9,
       $10, $11, $12, $13, $14, $15,
       $16, $17, $18, $19, $20, $21,
-      'unknown', 'novo'
+      'unknown', 'novo', $22, $23
     )
     RETURNING *`,
     [
@@ -251,6 +255,8 @@ async function insertOrUpdateLead(
       place.businessStatus,
       scored.score,
       JSON.stringify(scored.reasons),
+      place.latitude,
+      place.longitude,
     ],
   );
   const lead = inserted.rows[0];
@@ -352,7 +358,7 @@ async function importPlaces(
 
   await withTransaction(async (client) => {
     for (const place of places) {
-      const result = await insertOrUpdateLead(
+      const result = await upsertLeadFromPlace(
         client,
         userId,
         searchId,

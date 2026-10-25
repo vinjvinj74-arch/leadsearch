@@ -30,6 +30,15 @@ import {
 } from './js/leads.js';
 import { handleLeadModalClick, handleLeadModalSubmit, openLead } from './js/leadDetail.js';
 import {
+  destroyRadar,
+  handleRadarAction,
+  handleRadarChange,
+  handleRadarInput,
+  handleRadarSubmit,
+  refreshRadarAfterLeadChange,
+  renderRadar,
+} from './js/radar.js';
+import {
   handleSettingsAction,
   handleSettingsSubmit,
   renderSettings,
@@ -80,6 +89,7 @@ async function renderRoute() {
 
   state.route = name;
   stopSearchPolling();
+  destroyRadar();
   closeModal({ updateHash: false });
   closeSidebar();
   const token = ++routeToken;
@@ -111,6 +121,10 @@ async function renderRoute() {
   }
   if (name === 'settings') {
     await renderSettings();
+    return;
+  }
+  if (name === 'radar') {
+    await renderRadar(parsed.id);
   }
 }
 
@@ -188,6 +202,10 @@ document.addEventListener('click', (event) => {
       void handleSettingsAction(actionElement);
       return;
     }
+    if (action?.startsWith('radar-')) {
+      void handleRadarAction(actionElement);
+      return;
+    }
     if (
       action?.startsWith('lead-') ||
       action === 'edit-lead' ||
@@ -234,12 +252,22 @@ document.addEventListener('submit', (event) => {
   if (kind === 'lead-edit' || kind === 'activity') {
     void handleLeadModalSubmit(form);
   }
+  if (kind === 'radar') {
+    void handleRadarSubmit(form);
+  }
 });
 
 document.addEventListener('change', (event) => {
   const target = event.target;
   if (!(target instanceof Element)) return;
   if (state.route === 'leads') handleLeadsChange(target);
+  if (state.route === 'radar') handleRadarChange(target);
+});
+
+document.addEventListener('input', (event) => {
+  const target = event.target;
+  if (!(target instanceof Element)) return;
+  if (state.route === 'radar') handleRadarInput(target);
 });
 
 document.addEventListener('keydown', (event) => {
@@ -278,6 +306,7 @@ window.addEventListener('auth:deleted', () => {
 window.addEventListener('leads:changed', () => {
   if (state.route === 'leads') void refreshLeadsSilently();
   else if (state.route === 'dashboard') void renderDashboard();
+  else if (state.route === 'radar') void refreshRadarAfterLeadChange();
 });
 
 window.addEventListener('settings:rerender', () => {

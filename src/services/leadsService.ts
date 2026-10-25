@@ -38,6 +38,8 @@ export interface LeadRow {
   rating: string | number | null;
   reviews_count: number | null;
   business_status: string | null;
+  latitude: number | null;
+  longitude: number | null;
   score: number;
   score_override: number | null;
   score_reasons: ScoreReason[];
@@ -77,6 +79,8 @@ export function mapLead(row: LeadRow) {
     rating: row.rating === null ? null : Number(row.rating),
     reviewsCount: row.reviews_count,
     businessStatus: row.business_status,
+    latitude: row.latitude,
+    longitude: row.longitude,
     score: row.score,
     scoreOverride: row.score_override,
     effectiveScore: row.score_override ?? row.score,
