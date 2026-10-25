@@ -48,7 +48,7 @@ export const config = {
     pass: process.env.SMTP_PASS ?? '',
     from: process.env.SMTP_FROM ?? 'LeadSearch <no-reply@leadsearch.local>',
   },
-  maxSearchResults: Math.min(Math.max(int(process.env.MAX_SEARCH_RESULTS, 20), 1), 20),
+  maxSearchResults: Math.min(Math.max(int(process.env.MAX_SEARCH_RESULTS, 5), 1), 5),
   exportMaxRows: Math.min(Math.max(int(process.env.EXPORT_MAX_ROWS, 5000), 1), 20000),
   appVersion: process.env.npm_package_version ?? '1.0.0',
 };

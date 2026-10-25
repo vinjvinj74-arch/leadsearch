@@ -14,12 +14,9 @@ import {
   verifyPassword,
   type UserRow,
 } from '../services/authService.js';
-import {
-  createEmailToken,
-  isEmailConfigured,
-  trySendVerificationEmail,
-} from '../services/emailService.js';
+import { createEmailToken, isEmailConfigured, trySendVerificationEmail } from '../services/emailService.js';
 import { ensureSettings, getIntegrationStatus } from '../services/settingsService.js';
+import { publicSourceName } from '../services/leadsService.js';
 
 export const accountRouter = Router();
 accountRouter.use(requireAuth);
@@ -35,7 +32,10 @@ const passwordChangeSchema = z.object({
     .string()
     .min(10, 'A nova senha deve ter pelo menos 10 caracteres.')
     .max(128)
-    .refine((value) => /[A-Za-z]/.test(value) && /\d/.test(value), 'A nova senha deve conter letras e numeros.'),
+    .refine(
+      (value) => /[A-Za-z]/.test(value) && /\d/.test(value),
+      'A nova senha deve conter letras e numeros.',
+    ),
 });
 
 const deleteSchema = z.object({ password: z.string().min(1).max(128) });
@@ -49,7 +49,10 @@ accountRouter.patch(
 
     let emailChanged = false;
     if (body.email && body.email !== user.email.toLowerCase()) {
-      const existing = await query('SELECT id FROM users WHERE lower(email) = $1 AND id <> $2', [body.email, user.id]);
+      const existing = await query('SELECT id FROM users WHERE lower(email) = $1 AND id <> $2', [
+        body.email,
+        user.id,
+      ]);
       if (existing.rowCount) throw conflict('Este e-mail ja esta em uso.');
       emailChanged = true;
     }
@@ -165,7 +168,9 @@ accountRouter.get(
       findUserById(userId),
       ensureSettings(userId),
       query('SELECT * FROM leads WHERE user_id = $1 ORDER BY created_at DESC LIMIT 5000', [userId]),
-      query('SELECT * FROM lead_activities WHERE user_id = $1 ORDER BY created_at DESC LIMIT 10000', [userId]),
+      query('SELECT * FROM lead_activities WHERE user_id = $1 ORDER BY created_at DESC LIMIT 10000', [
+        userId,
+      ]),
       query('SELECT * FROM searches WHERE user_id = $1 ORDER BY created_at DESC LIMIT 1000', [userId]),
       query(
         `SELECT ls.* FROM lead_sources ls JOIN leads l ON l.id = ls.lead_id WHERE l.user_id = $1 LIMIT 10000`,
@@ -177,14 +182,37 @@ accountRouter.get(
       ),
     ]);
 
+    const safeSearches = searches.rows.map((row) => {
+      const safe: Record<string, unknown> = { ...row };
+      delete safe.provider;
+      delete safe.provider_request_id;
+      delete safe.cost_note;
+      safe.error_message =
+        row.status === 'failed'
+          ? 'Pesquisa nao concluida.'
+          : row.status === 'cancelled'
+            ? 'Pesquisa cancelada.'
+            : null;
+      return safe;
+    });
+    const safeSources = sources.rows.map((row) => {
+      const safe: Record<string, unknown> = { ...row };
+      delete safe.metadata;
+      if (row.source !== 'website_enrichment' && row.source !== 'website_check') {
+        delete safe.source_url;
+      }
+      safe.source = publicSourceName(String(row.source));
+      return safe;
+    });
+
     const payload = {
       exportedAt: new Date().toISOString(),
       account: user ? toAuthUser(user) : null,
       settings,
       leads: leads.rows,
       activities: activities.rows,
-      searches: searches.rows,
-      sources: sources.rows,
+      searches: safeSearches,
+      sources: safeSources,
       contacts: contacts.rows,
       integrations: getIntegrationStatus(),
     };

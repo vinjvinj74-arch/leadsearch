@@ -20,9 +20,6 @@ healthRouter.get(
       database: { ok: db.ok, latencyMs: db.latencyMs, ...(db.ok ? {} : { error: 'Banco indisponivel.' }) },
       integrations: {
         discoveryConfigured: integrations.discovery.configured,
-        discoveryProvider: integrations.discovery.provider,
-        apifyConfigured: integrations.discovery.provider === 'apify_google_maps',
-        googleMapsConfigured: integrations.discovery.provider === 'google_places',
         emailConfigured: integrations.email.configured,
       },
       timestamp: new Date().toISOString(),

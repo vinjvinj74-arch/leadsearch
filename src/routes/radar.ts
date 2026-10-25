@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { LEAD_STATUSES, WEBSITE_STATUSES } from '../config.js';
+import { config, LEAD_STATUSES, WEBSITE_STATUSES } from '../config.js';
 import { recordAudit } from '../lib/audit.js';
 import { asyncHandler } from '../lib/http.js';
 import { requireAuth } from '../middleware/auth.js';
@@ -61,7 +61,7 @@ const createSchema = z.object({
     countryCode: z.preprocess(emptyToUndefined, z.string().trim().length(2).optional()),
   }),
   radiusKm: z.number().int().min(1).max(50).nullable().optional(),
-  limit: z.number().int().min(1).max(20).default(20),
+  limit: z.number().int().min(1).max(config.maxSearchResults).default(config.maxSearchResults),
   filters: filtersSchema,
 });
 
@@ -99,17 +99,9 @@ radarRouter.post(
     recordAudit(req, 'radar_search_created', 'radar_search', search.id, {
       name: search.name,
       location: search.location.label,
-      terms: search.searchTerms,
       limit: search.resultLimit,
     });
-    res.status(201).json({
-      search,
-      estimate: {
-        maxPlaces: search.resultLimit,
-        maxRunChargeUsd: 1,
-        note: 'A fonte nao garante uma quantidade exata de resultados. O teto de cobranca da execucao esta configurado no servidor.',
-      },
-    });
+    res.status(201).json({ search });
   }),
 );
 

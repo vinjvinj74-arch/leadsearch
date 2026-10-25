@@ -54,16 +54,15 @@ interface PlacesApiResponse {
 
 function requireKey(): string {
   if (!config.googleMapsApiKey) {
-    throw integrationNotConfigured(
-      'Google Maps Platform nao configurada. Defina GOOGLE_MAPS_API_KEY no servidor para executar pesquisas reais.',
-    );
+    throw integrationNotConfigured('A pesquisa de empresas nao esta disponivel no momento.');
   }
   return config.googleMapsApiKey;
 }
 
 function regionCodeFor(country: string): string | undefined {
   const normalized = country.trim().toLowerCase();
-  if (!normalized || normalized.includes('brasil') || normalized === 'brazil' || normalized === 'br') return 'BR';
+  if (!normalized || normalized.includes('brasil') || normalized === 'brazil' || normalized === 'br')
+    return 'BR';
   return normalized.length === 2 ? normalized.toUpperCase() : undefined;
 }
 
@@ -93,7 +92,7 @@ export async function geocodeCity(
   try {
     const response = await fetch(url, { signal: AbortSignal.timeout(12000) });
     if (!response.ok) {
-      logger.warn({ status: response.status }, 'Geocoding API retornou erro HTTP');
+      logger.warn({ status: response.status }, 'Geocodificacao externa retornou erro HTTP');
       return null;
     }
     const payload = (await response.json()) as {
@@ -102,12 +101,12 @@ export async function geocodeCity(
     };
     const location = payload.results?.[0]?.geometry?.location;
     if (payload.status !== 'OK' || typeof location?.lat !== 'number' || typeof location?.lng !== 'number') {
-      logger.warn({ providerStatus: payload.status }, 'Geocoding API nao retornou coordenadas');
+      logger.warn({ upstreamStatus: payload.status }, 'Geocodificacao externa nao retornou coordenadas');
       return null;
     }
     return { latitude: location.lat, longitude: location.lng };
   } catch (error) {
-    logger.warn({ err: error }, 'Falha ao consultar Geocoding API');
+    logger.warn({ err: error }, 'Falha ao consultar geocodificacao externa');
     return null;
   }
 }
@@ -118,7 +117,7 @@ export async function searchPlaces(params: SearchParams): Promise<PlaceResult[]>
   const body: Record<string, unknown> = {
     textQuery: queryParts.join(' '),
     languageCode: 'pt-BR',
-    maxResultCount: Math.min(Math.max(params.limit, 1), 20),
+    maxResultCount: Math.min(Math.max(params.limit, 1), config.maxSearchResults),
   };
   const region = regionCodeFor(params.country);
   if (region) body.regionCode = region;
@@ -151,15 +150,10 @@ export async function searchPlaces(params: SearchParams): Promise<PlaceResult[]>
     const payload = (await response.json().catch(() => ({}))) as PlacesApiResponse;
     if (!response.ok || payload.error) {
       logger.warn(
-        { status: response.status, providerStatus: payload.error?.status, geocodeUsed },
-        'Places API retornou erro',
+        { status: response.status, upstreamStatus: payload.error?.status, geocodeUsed },
+        'Servico de pesquisa externo retornou erro',
       );
-      throw upstreamError(
-        payload.error?.message
-          ? `Google Places recusou a consulta: ${payload.error.message}`
-          : 'Google Places recusou a consulta.',
-        { providerStatus: payload.error?.status ?? null, httpStatus: response.status },
-      );
+      throw upstreamError('Nao foi possivel concluir a pesquisa.');
     }
     return (payload.places ?? []).map((place) => ({
       placeId: place.id ?? '',
@@ -178,11 +172,11 @@ export async function searchPlaces(params: SearchParams): Promise<PlaceResult[]>
   } catch (error) {
     if (error instanceof AppError) throw error;
     if (error instanceof Error && error.name === 'TimeoutError') {
-      throw upstreamError('Tempo limite excedido ao consultar o Google Places.');
+      throw upstreamError('Tempo limite excedido ao processar a pesquisa.');
     }
-    
-    logger.warn({ err: error }, 'Falha de rede ao consultar Places API');
-    throw upstreamError('Nao foi possivel conectar ao Google Places.');
+
+    logger.warn({ err: error }, 'Falha de rede ao consultar o servico de pesquisa');
+    throw upstreamError('Nao foi possivel processar a pesquisa no momento.');
   }
 }
 
@@ -206,10 +200,7 @@ export async function testGooglePlaces(): Promise<{ ok: boolean; latencyMs: numb
   });
   const payload = (await response.json().catch(() => ({}))) as PlacesApiResponse;
   if (!response.ok || payload.error) {
-    throw upstreamError(
-      payload.error?.message ?? 'Falha ao testar a Google Maps Platform.',
-      { providerStatus: payload.error?.status ?? null, httpStatus: response.status },
-    );
+    throw upstreamError('Nao foi possivel validar a pesquisa de empresas.');
   }
   return {
     ok: true,

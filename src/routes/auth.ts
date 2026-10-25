@@ -187,13 +187,6 @@ authRouter.get(
       settings: await ensureSettings(user.id),
       integrations: {
         discoveryConfigured: isApifyConfigured() || Boolean(config.googleMapsApiKey),
-        discoveryProvider: isApifyConfigured()
-          ? 'apify_google_maps'
-          : config.googleMapsApiKey
-            ? 'google_places'
-            : 'none',
-        googleMapsConfigured: isApifyConfigured() || Boolean(config.googleMapsApiKey),
-        apifyConfigured: isApifyConfigured(),
         emailConfigured: isEmailConfigured(),
       },
     });
@@ -235,10 +228,10 @@ authRouter.post(
     if (!user) throw badRequest('Token invalido ou expirado.');
 
     const passwordHash = await hashPassword(body.password);
-    await query('UPDATE users SET password_hash = $2, failed_login_attempts = 0, locked_until = NULL, updated_at = now() WHERE id = $1', [
-      userId,
-      passwordHash,
-    ]);
+    await query(
+      'UPDATE users SET password_hash = $2, failed_login_attempts = 0, locked_until = NULL, updated_at = now() WHERE id = $1',
+      [userId, passwordHash],
+    );
     await revokeUserSessions(userId);
     req.user = toAuthUser(user);
     recordAudit(req, 'password_reset', 'user', userId);

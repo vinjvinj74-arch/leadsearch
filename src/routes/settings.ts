@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { EXPORT_FIELDS, THEMES } from '../config.js';
+import { config, EXPORT_FIELDS, THEMES } from '../config.js';
 import { recordAudit } from '../lib/audit.js';
 import { asyncHandler } from '../lib/http.js';
 import { requireAuth } from '../middleware/auth.js';
@@ -22,7 +22,7 @@ const patchSchema = z.object({
   defaultState: nullableString(100),
   defaultCountry: z.preprocess(emptyToUndefined, z.string().trim().max(100).optional()),
   defaultNiche: nullableString(100),
-  defaultLimit: z.coerce.number().int().min(1).max(20).optional(),
+  defaultLimit: z.coerce.number().int().min(1).max(config.maxSearchResults).optional(),
   favoriteNiches: z.array(z.string().trim().min(1).max(80)).max(20).optional(),
   exportFields: z.array(z.enum(EXPORT_FIELDS)).min(1).max(EXPORT_FIELDS.length).optional(),
   scoreWeights: z.record(z.coerce.number().int().min(0).max(50)).nullable().optional(),
@@ -64,16 +64,18 @@ integrationsRouter.post(
     if (isApifyConfigured()) {
       const result = await testApifyConnection();
       res.json({
-        ...result,
-        message: 'Token do Apify validado e actor acessivel. Nenhuma execucao paga foi iniciada.',
+        ok: result.ok,
+        latencyMs: result.latencyMs,
+        message: 'Conectividade da pesquisa de empresas confirmada. Nenhuma pesquisa foi iniciada.',
       });
       return;
     }
 
     const result = await testGooglePlaces();
     res.json({
-      ...result,
-      message: 'Conectividade confirmada. Esta chamada consumiu uma requisicao real e pode gerar cobranca.',
+      ok: result.ok,
+      latencyMs: result.latencyMs,
+      message: 'Conectividade da pesquisa de empresas confirmada. Nenhuma pesquisa foi iniciada.',
     });
   }),
 );

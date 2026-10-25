@@ -15,6 +15,7 @@ import {
   listLeads,
   listLeadsForExport,
   mapLead,
+  publicSourceName,
   recalculateLead,
   setDoNotContact,
   updateLead,
@@ -26,8 +27,7 @@ export const leadsRouter = Router();
 leadsRouter.use(requireAuth);
 
 const emptyToUndefined = (value: unknown) => (value === '' || value === null ? undefined : value);
-const optionalString = (max: number) =>
-  z.preprocess(emptyToUndefined, z.string().trim().max(max).optional());
+const optionalString = (max: number) => z.preprocess(emptyToUndefined, z.string().trim().max(max).optional());
 
 const filtersSchema = z.object({
   q: optionalString(200),
@@ -37,7 +37,10 @@ const filtersSchema = z.object({
   minScore: z.preprocess(emptyToUndefined, z.coerce.number().int().min(0).max(100).optional()),
   maxScore: z.preprocess(emptyToUndefined, z.coerce.number().int().min(0).max(100).optional()),
   searchId: z.preprocess(emptyToUndefined, z.string().uuid().optional()),
-  sort: z.preprocess(emptyToUndefined, z.enum(['score', 'created_at', 'updated_at', 'name', 'last_checked_at', 'status']).optional()),
+  sort: z.preprocess(
+    emptyToUndefined,
+    z.enum(['score', 'created_at', 'updated_at', 'name', 'last_checked_at', 'status']).optional(),
+  ),
   order: z.preprocess(emptyToUndefined, z.enum(['asc', 'desc']).optional()),
 });
 
@@ -67,13 +70,13 @@ leadsRouter.get(
 
 const exportQuerySchema = filtersSchema.extend({
   fields: z.preprocess(emptyToUndefined, z.string().max(500).optional()),
-  ids: z.preprocess(
-    (value) => {
-      if (typeof value !== 'string' || !value.trim()) return undefined;
-      return value.split(',').map((id) => id.trim()).filter(Boolean);
-    },
-    z.array(z.string().uuid()).max(500).optional(),
-  ),
+  ids: z.preprocess((value) => {
+    if (typeof value !== 'string' || !value.trim()) return undefined;
+    return value
+      .split(',')
+      .map((id) => id.trim())
+      .filter(Boolean);
+  }, z.array(z.string().uuid()).max(500).optional()),
 });
 
 const STATUS_LABELS: Record<string, string> = {
@@ -112,7 +115,7 @@ const FIELD_LABELS: Record<string, string> = {
   score: 'Pontuacao',
   status: 'Status comercial',
   address: 'Endereco',
-  google_maps_url: 'Google Maps',
+  google_maps_url: 'Mapa',
   last_checked_at: 'Ultima verificacao',
   created_at: 'Criado em',
   source: 'Origem',
@@ -128,7 +131,10 @@ leadsRouter.get(
 
     const settings = await ensureSettings(req.user!.id);
     const requestedFields = parsed.fields
-      ? parsed.fields.split(',').map((field) => field.trim()).filter(Boolean)
+      ? parsed.fields
+          .split(',')
+          .map((field) => field.trim())
+          .filter(Boolean)
       : settings.exportFields;
     const fields = requestedFields.filter((field) => (EXPORT_FIELDS as readonly string[]).includes(field));
     if (!fields.length) throw badRequest('Selecione pelo menos um campo valido para exportacao.');
@@ -137,7 +143,7 @@ leadsRouter.get(
     const columns = fields.map((field) => ({ key: field, label: FIELD_LABELS[field] ?? field }));
     const csvRows = rows.map((row) => {
       const lead = mapLead(row);
-      const source = row.place_id ? 'Google Places' : 'Manual';
+      const source = row.place_id ? publicSourceName('apify_google_maps') : 'Manual';
       const values: Record<string, unknown> = {
         Empresa: lead.name,
         Segmento: lead.segment,
@@ -151,7 +157,7 @@ leadsRouter.get(
         Pontuacao: lead.effectiveScore,
         'Status comercial': STATUS_LABELS[lead.status] ?? lead.status,
         Endereco: lead.address,
-        'Google Maps': lead.googleMapsUrl,
+        Mapa: lead.googleMapsUrl,
         'Ultima verificacao': lead.websiteLastCheckedAt,
         'Criado em': lead.createdAt,
         Origem: source,
@@ -161,7 +167,10 @@ leadsRouter.get(
       return record;
     });
 
-    const csv = toCsv(columns.map((column) => column.label), csvRows);
+    const csv = toCsv(
+      columns.map((column) => column.label),
+      csvRows,
+    );
     recordAudit(req, 'leads_exported', 'lead', null, { count: rows.length, fields });
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader(
@@ -222,7 +231,9 @@ leadsRouter.patch(
       id,
       {
         ...patch,
-        ...(Object.prototype.hasOwnProperty.call(body, 'scoreOverride') ? { scoreOverride: scoreOverride ?? null } : {}),
+        ...(Object.prototype.hasOwnProperty.call(body, 'scoreOverride')
+          ? { scoreOverride: scoreOverride ?? null }
+          : {}),
       },
       note,
     );

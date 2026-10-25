@@ -55,11 +55,8 @@ export function mapSearch(row: SearchRow) {
     radiusKm: row.radius_km,
     resultLimit: row.result_limit,
     status: row.status,
-    provider: row.provider,
-    providerRequestId: row.provider_request_id,
     resultsCount: row.results_count,
-    errorMessage: row.error_message,
-    costNote: row.cost_note,
+    errorMessage: row.status === 'failed' ? 'Nao foi possivel concluir a pesquisa.' : null,
     createdAt: iso(row.created_at),
     completedAt: iso(row.completed_at),
   };
@@ -358,15 +355,7 @@ async function importPlaces(
 
   await withTransaction(async (client) => {
     for (const place of places) {
-      const result = await upsertLeadFromPlace(
-        client,
-        userId,
-        searchId,
-        place,
-        weights,
-        location,
-        source,
-      );
+      const result = await upsertLeadFromPlace(client, userId, searchId, place, weights, location, source);
       if (result.created) created += 1;
       else updated += 1;
     }
@@ -387,7 +376,7 @@ async function processApifySearch(
   try {
     const run = await waitForSearchRun(runId);
     if (!run.defaultDatasetId) {
-      throw new Error('A execucao do Apify nao retornou um dataset.');
+      throw new Error('Nao foi possivel concluir a pesquisa.');
     }
 
     const results = await fetchSearchResults(run.defaultDatasetId, limit);
@@ -424,22 +413,23 @@ async function processApifySearch(
 
     logger.info(
       { userId, searchId, runId, found: places.length, created: stats.created, updated: stats.updated },
-      'Pesquisa Apify importada',
+      'Pesquisa importada',
     );
 
     if (allowEnrichment) {
       await runSearchEnrichment(userId, searchId);
-      await query(
-        `UPDATE searches SET results_count = $3 WHERE id = $1 AND user_id = $2`,
-        [searchId, userId, places.length],
-      );
+      await query(`UPDATE searches SET results_count = $3 WHERE id = $1 AND user_id = $2`, [
+        searchId,
+        userId,
+        places.length,
+      ]);
     }
   } catch (error) {
-    logger.error({ err: error, userId, searchId, runId }, 'Falha ao processar pesquisa Apify');
+    logger.error({ err: error, userId, searchId, runId }, 'Falha ao processar pesquisa');
     await query(
       `UPDATE searches SET status = 'failed', error_message = $3, completed_at = now()
        WHERE id = $1 AND user_id = $2`,
-      [searchId, userId, error instanceof Error ? error.message : 'Falha na pesquisa Apify.'],
+      [searchId, userId, 'Nao foi possivel concluir a pesquisa.'],
     );
   }
 }
@@ -454,10 +444,7 @@ async function createApifySearch(
   const releaseSlot = reserveApifyRun();
   let search: SearchRow | null = null;
 
-  const costNote =
-    params.radiusKm && params.radiusKm > 0
-      ? 'Executa o Apify Google Maps Scraper com area de busca por raio. O Apify cobra por local raspado e add-ons; o limite por execucao e US$ 1,00.'
-      : 'Executa o Apify Google Maps Scraper. O Apify cobra por local raspado e add-ons; o limite por execucao e US$ 1,00.';
+  const costNote = 'A pesquisa pode consumir creditos e gerar cobranca.';
 
   try {
     search = await insertSearchRow(userId, params, limit, 'apify_google_maps', costNote);
@@ -472,7 +459,7 @@ async function createApifySearch(
 
     void processApifySearch(userId, search.id, run.runId, limit, params, weights, allowEnrichment)
       .catch((error) => {
-        logger.error({ err: error, searchId: search?.id, runId: run.runId }, 'Falha nao tratada da pesquisa Apify');
+        logger.error({ err: error, searchId: search?.id, runId: run.runId }, 'Falha nao tratada da pesquisa');
       })
       .finally(releaseSlot);
 
@@ -487,7 +474,7 @@ async function createApifySearch(
       await query(
         `UPDATE searches SET status = 'failed', error_message = $3, completed_at = now()
          WHERE id = $1 AND user_id = $2`,
-        [search.id, userId, error instanceof Error ? error.message : 'Falha ao iniciar a pesquisa.'],
+        [search.id, userId, 'Nao foi possivel iniciar a pesquisa.'],
       );
     }
     throw error;
@@ -506,10 +493,7 @@ export async function createSearch(
     return createApifySearch(userId, params, limit, weights, allowEnrichment);
   }
 
-  const costNote =
-    params.radiusKm && params.radiusKm > 0
-      ? 'Consome 1 requisicao de Geocoding e 1 de Places Text Search (New). O Google pode cobrar por requisicao conforme a tabela vigente.'
-      : 'Consome 1 requisicao de Places Text Search (New). O Google pode cobrar por requisicao conforme a tabela vigente.';
+  const costNote = 'A pesquisa pode consumir creditos e gerar cobranca.';
 
   const search = await insertSearchRow(userId, params, limit, 'google_places', costNote);
 
@@ -520,7 +504,7 @@ export async function createSearch(
     await query(
       `UPDATE searches SET status = 'failed', error_message = $3, completed_at = now()
        WHERE id = $1 AND user_id = $2`,
-      [search.id, userId, error instanceof Error ? error.message : 'Falha na pesquisa.'],
+      [search.id, userId, 'Nao foi possivel concluir a pesquisa.'],
     );
     throw error;
   }

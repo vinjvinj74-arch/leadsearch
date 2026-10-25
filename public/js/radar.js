@@ -25,7 +25,7 @@ import { openLead } from './leadDetail.js';
 
 const RADAR_STATUS_LABELS = {
   pending: 'Na fila',
-  running: 'Coletando empresas',
+  running: 'Pesquisando empresas',
   completed: 'Concluída',
   failed: 'Falhou',
   cancelled: 'Cancelada',
@@ -40,7 +40,7 @@ const RADAR_STATUS_CLASS = {
 };
 
 const ACTIVE_STATUSES = new Set(['pending', 'running']);
-const MAX_RESULTS = 20;
+const MAX_RESULTS = 5;
 
 const TILE_PROVIDER = {
   url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
@@ -419,7 +419,7 @@ function validateForm() {
 function locationSelectedMarkup() {
   const location = radar.location;
   if (!location) {
-    return '<p class="small muted">Nenhuma localização selecionada. A coleta geográfica exige uma sugestão válida.</p>';
+    return '<p class="small muted">Nenhuma localização selecionada. A pesquisa geográfica exige uma sugestão válida.</p>';
   }
   const details = [
     location.neighborhood,
@@ -804,7 +804,7 @@ function updateSearchChrome() {
         ${search ? `<span class="${RADAR_STATUS_CLASS[search.status] ?? 'badge'}">${esc(RADAR_STATUS_LABELS[search.status] ?? search.status)}</span>` : ''}
         ${isSaved ? '<span class="badge badge-success">Pesquisa salva</span>' : ''}
       </div>
-      <p>${esc(search ? [search.location.label, search.radiusKm ? `${search.radiusKm} km` : null, `${search.resultLimit} resultados no máximo`].filter(Boolean).join(' · ') : 'Use os filtros para preparar uma coleta geográfica.')}</p>
+      <p>${esc(search ? [search.location.label, search.radiusKm ? `${search.radiusKm} km` : null, `${search.resultLimit} resultados no máximo`].filter(Boolean).join(' · ') : 'Use os filtros para preparar uma pesquisa geográfica.')}</p>
     </div>
     <div class="radar-map-actions">
       <button class="btn btn-sm radar-mobile-filter" type="button" data-action="radar-filters-toggle">Filtros</button>
@@ -819,7 +819,7 @@ function statusNoticeMarkup() {
   if (!search) {
     return `
       <div class="notice notice-info">
-        <span><strong>Pronto para o Radar.</strong> A coleta só começa após revisar e confirmar a pesquisa. Nenhuma chamada paga é feita ao abrir esta página.</span>
+        <span><strong>Pronto para o Radar.</strong> A pesquisa só começa após revisar e confirmar os parâmetros. Nenhuma pesquisa é feita ao abrir esta página.</span>
       </div>`;
   }
   if (isActive()) {
@@ -830,10 +830,10 @@ function statusNoticeMarkup() {
             <span class="spinner" aria-hidden="true"></span>
             <div>
               <strong>${esc(activeLabel())}</strong>
-              <p class="small muted">O servidor acompanha a execução do Apify. Você pode navegar para outra área; o resultado fica no histórico.</p>
+              <p class="small muted">A pesquisa continua no servidor. Você pode navegar para outra área; o resultado fica no histórico.</p>
             </div>
           </div>
-          <button class="btn btn-sm btn-danger-ghost" type="button" data-action="radar-cancel">Cancelar coleta</button>
+          <button class="btn btn-sm btn-danger-ghost" type="button" data-action="radar-cancel">Cancelar pesquisa</button>
         </div>
         <div class="radar-progress-track"><span></span></div>
       </div>`;
@@ -842,20 +842,20 @@ function statusNoticeMarkup() {
     const saved = radar.results.filter((result) => result.saved).length;
     return `
       <div class="notice notice-success">
-        <span><strong>Coleta concluída.</strong> ${fmtNumber(search.resultsCount)} empresa(s) encontrada(s), ${fmtNumber(saved)} salva(s) no CRM. Dados de ${esc(fmtDate(search.completedAt || search.updatedAt, true))}.</span>
+        <span><strong>Pesquisa concluída.</strong> ${fmtNumber(search.resultsCount)} empresa(s) encontrada(s), ${fmtNumber(saved)} salva(s) no CRM. Dados de ${esc(fmtDate(search.completedAt || search.updatedAt, true))}.</span>
       </div>`;
   }
   if (search.status === 'failed') {
     return `
       <div class="notice notice-danger">
-        <span><strong>A coleta falhou.</strong> ${esc(search.errorMessage || 'Tente novamente com outro limite ou verifique a integração do Apify.')}</span>
+        <span><strong>A pesquisa falhou.</strong> ${esc(search.errorMessage || 'Não foi possível concluir a pesquisa. Revise os parâmetros e tente novamente.')}</span>
         <button class="btn btn-sm" type="button" data-action="radar-rerun">Revisar e repetir</button>
       </div>`;
   }
   if (search.status === 'cancelled') {
     return `
       <div class="notice notice-warning">
-        <span><strong>Coleta cancelada.</strong> Os resultados parciais podem não ter sido importados. Nenhuma nova coleta é iniciada automaticamente.</span>
+        <span><strong>Pesquisa cancelada.</strong> Os resultados parciais podem não ter sido importados. Nenhuma nova pesquisa é iniciada automaticamente.</span>
         <button class="btn btn-sm" type="button" data-action="radar-rerun">Revisar e repetir</button>
       </div>`;
   }
@@ -943,7 +943,7 @@ function resultsEmptyMarkup(rows) {
       <div class="radar-empty">
         <span class="spinner" aria-hidden="true"></span>
         <strong>${esc(activeLabel())}</strong>
-        <p>A lista será preenchida quando a coleta terminar. Não é necessário manter esta página aberta.</p>
+        <p>A lista será preenchida quando a pesquisa terminar. Não é necessário manter esta página aberta.</p>
       </div>`;
   }
   if (radar.search.status === 'failed' || radar.search.status === 'cancelled') {
@@ -951,7 +951,7 @@ function resultsEmptyMarkup(rows) {
       <div class="radar-empty">
         <span class="radar-empty-icon" aria-hidden="true"></span>
         <strong>Sem resultados para exibir</strong>
-        <p>${esc(radar.search.errorMessage || 'A última coleta não foi concluída.')}</p>
+        <p>${esc(radar.search.errorMessage || 'A última pesquisa não foi concluída.')}</p>
         <button class="btn" type="button" data-action="radar-rerun">Revisar e repetir</button>
       </div>`;
   }
@@ -960,7 +960,7 @@ function resultsEmptyMarkup(rows) {
       <div class="radar-empty">
         <span class="radar-empty-icon" aria-hidden="true"></span>
         <strong>Nenhuma empresa encontrada</strong>
-        <p>A fonte não retornou empresas para estes parâmetros. Tente ampliar o raio, remover filtros de coleta ou usar outro segmento.</p>
+        <p>A pesquisa não retornou empresas para estes parâmetros. Tente ampliar o raio, remover filtros de pesquisa ou usar outro segmento.</p>
       </div>`;
   }
   if (!rows.length) {
@@ -1025,11 +1025,11 @@ function updateMapOverlay(rows) {
   } else if (!radar.search) {
     message = 'Selecione a localização e execute uma pesquisa para visualizar as empresas.';
   } else if (isActive()) {
-    message = 'Coleta em andamento. Os marcadores aparecerão automaticamente ao concluir.';
+    message = 'Pesquisa em andamento. Os marcadores aparecerão automaticamente ao concluir.';
   } else if (!radar.results.length) {
     message =
       radar.search.status === 'failed'
-        ? 'A coleta falhou. Consulte a mensagem acima.'
+        ? 'A pesquisa falhou. Consulte a mensagem acima.'
         : 'Nenhuma empresa encontrada para esta pesquisa.';
   } else if (!mapped) {
     message = radar.results.length
@@ -1080,7 +1080,7 @@ function selectResult(id, { fromMap = false, openPopup = true } = {}) {
 function historyMarkup() {
   if (radar.history === null) return '<p class="small muted">Carregando histórico...</p>';
   if (!radar.history.length) {
-    return '<p class="small muted">Nenhuma coleta realizada. O histórico aparecerá aqui.</p>';
+    return '<p class="small muted">Nenhuma pesquisa realizada. O histórico aparecerá aqui.</p>';
   }
   return radar.history
     .map((search) => {
@@ -1128,7 +1128,7 @@ function mapHeadPlaceholder() {
   return `
     <div class="radar-map-title">
       <div class="row"><h2>Mapa de oportunidades</h2></div>
-      <p>Use os filtros para preparar uma coleta geográfica.</p>
+      <p>Use os filtros para preparar uma pesquisa geográfica.</p>
     </div>
     <div class="radar-map-actions">
       <button class="btn btn-sm radar-mobile-filter" type="button" data-action="radar-filters-toggle">Filtros</button>
@@ -1155,7 +1155,7 @@ function radarPageMarkup() {
             <div class="form-error" data-radar-form-error hidden></div>
 
             <details class="radar-filter-group" open>
-              <summary><span>Localização</span><span class="radar-scope-badge">coleta</span></summary>
+              <summary><span>Localização</span><span class="radar-scope-badge">pesquisa</span></summary>
               <div class="radar-filter-body">
                 <label class="field field-full">
                   <span>Endereço, cidade ou região</span>
@@ -1163,7 +1163,7 @@ function radarPageMarkup() {
                     <input id="radar-location-input" type="text" value="${esc(radar.query)}" placeholder="Ex.: Campinas, SP, Brasil" autocomplete="off" aria-autocomplete="list" aria-controls="radar-location-suggestions" aria-expanded="false" />
                     <span id="radar-location-suggestions" class="radar-location-suggestions" role="listbox" hidden></span>
                   </span>
-                  <span class="hint">Digite ao menos 3 caracteres e selecione uma sugestão do OpenStreetMap.</span>
+                  <span class="hint">Digite ao menos 3 caracteres e selecione uma sugestão.</span>
                 </label>
                 <div id="radar-location-selected">${locationSelectedMarkup()}</div>
                 <div class="form-grid">
@@ -1174,16 +1174,16 @@ function radarPageMarkup() {
                   <label class="field">
                     <span>Raio (km)</span>
                     <input type="number" name="radius" min="1" max="50" step="1" value="${esc(filterValue(radar.radiusKm))}" placeholder="Ex.: 10" />
-                    <span class="hint">Opcional. O Actor aplica um ponto central de 1 a 50 km.</span>
+                    <span class="hint">Opcional. Define um ponto central de 1 a 50 km.</span>
                   </label>
                 </div>
                 <label class="checkbox-row"><input type="checkbox" name="centerMap" ${filterCheckbox(radar.centerMap)} /> Centralizar o mapa ao selecionar a localidade</label>
-                <p class="hint radar-hint-box">Uma localização por coleta. Para várias regiões, salve e repita a pesquisa com outra localidade.</p>
+                <p class="hint radar-hint-box">Uma localização por pesquisa. Para várias regiões, salve e repita a pesquisa com outra localidade.</p>
               </div>
             </details>
 
             <details class="radar-filter-group" open>
-              <summary><span>Segmento e atividade</span><span class="radar-scope-badge">coleta</span></summary>
+              <summary><span>Segmento e atividade</span><span class="radar-scope-badge">pesquisa</span></summary>
               <div class="radar-filter-body">
                 <label class="field">
                   <span>Segmentos <small class="muted">(até 5, separados por vírgula)</small></span>
@@ -1225,12 +1225,12 @@ function radarPageMarkup() {
                     <input type="text" name="excludeKeywords" value="${esc(radar.filters.excludeKeywords.join(', '))}" placeholder="franquia, shopping" />
                   </label>
                 </div>
-                <p class="hint radar-hint-box">Palavras de inclusão e exclusão são aplicadas aos resultados carregados, sem nova coleta.</p>
+                <p class="hint radar-hint-box">Palavras de inclusão e exclusão são aplicadas aos resultados carregados, sem nova pesquisa.</p>
               </div>
             </details>
 
             <details class="radar-filter-group">
-              <summary><span>Presença digital e coleta</span><span class="radar-scope-badge">coleta</span></summary>
+              <summary><span>Presença digital e pesquisa</span><span class="radar-scope-badge">pesquisa</span></summary>
               <div class="radar-filter-body">
                 <div class="form-grid">
                   <label class="field">
@@ -1238,7 +1238,7 @@ function radarPageMarkup() {
                     <select name="website">
                       <option value="all"${selectedOption('all', radar.filters.website)}>Qualquer presença</option>
                       <option value="with"${selectedOption('with', radar.filters.website)}>Com site informado</option>
-                      <option value="without"${selectedOption('without', radar.filters.website)}>Sem site cadastrado na fonte</option>
+                      <option value="without"${selectedOption('without', radar.filters.website)}>Sem site cadastrado</option>
                     </select>
                   </label>
                   <label class="field">
@@ -1258,12 +1258,12 @@ function radarPageMarkup() {
                   <label class="field">
                     <span>Limite de resultados</span>
                     <select name="limit">
-                      ${[5, 10, 20].map((value) => `<option value="${value}"${selectedOption(value, radar.limit)}>Até ${value}</option>`).join('')}
+                      ${[1, 2, 3, 4, 5].map((value) => `<option value="${value}"${selectedOption(value, radar.limit)}>${value} ${value === 1 ? 'resultado' : 'resultados'}</option>`).join('')}
                     </select>
                   </label>
                 </div>
                 <label class="checkbox-row"><input type="checkbox" name="activeOnly" ${filterCheckbox(radar.filters.activeOnly)} /> Excluir locais permanentemente ou temporariamente fechados</label>
-                <p class="hint radar-hint-box">A fonte não fornece faturamento ou funcionários. Redes sociais e e-mails não são coletados nesta configuração de custo; e-mail e site verificado aparecem após salvar e enriquecer o lead no CRM.</p>
+                <p class="hint radar-hint-box">Faturamento e quantidade de funcionários não estão disponíveis. Redes sociais e e-mails não são incluídos nesta pesquisa; e-mail e site verificado aparecem após salvar e enriquecer o lead no CRM.</p>
               </div>
             </details>
 
@@ -1333,7 +1333,7 @@ function radarPageMarkup() {
             </details>
 
             <details class="radar-filter-group" open>
-              <summary><span>Ordenação e execução</span><span class="radar-scope-badge">coleta</span></summary>
+              <summary><span>Ordenação e execução</span><span class="radar-scope-badge">pesquisa</span></summary>
               <div class="radar-filter-body">
                 <label class="field">
                   <span>Ordenar resultados</span>
@@ -1346,8 +1346,8 @@ function radarPageMarkup() {
                   </select>
                 </label>
                 <div class="radar-execute-note">
-                  <strong>Coleta real no Apify</strong>
-                  <span>Ao confirmar, uma execução pode consumir créditos. O teto configurado é de US$ 1,00 por execução e até ${MAX_RESULTS} locais.</span>
+                  <strong>Iniciar pesquisa</strong>
+                  <span>Ao confirmar, a pesquisa pode consumir créditos e gerar cobrança. A quantidade de empresas pode variar.</span>
                 </div>
                 <button class="btn btn-primary btn-block" type="submit" ${radar.submitting ? 'disabled' : ''}>Revisar e executar pesquisa</button>
                 <button class="btn btn-ghost btn-block" type="button" data-action="radar-reset">Limpar filtros</button>
@@ -1361,7 +1361,7 @@ function radarPageMarkup() {
             <div class="radar-history-head">
               <div>
                 <h3>Histórico</h3>
-                <p>Abrir uma pesquisa não inicia nova coleta.</p>
+                <p>Abrir uma pesquisa não inicia nova pesquisa.</p>
               </div>
               <span class="badge" id="radar-history-count">${radar.history?.length ?? 0}</span>
             </div>
@@ -1488,17 +1488,17 @@ function openRunConfirmation() {
   const labels = activeFilterLabels(radar.filters);
   confirmModal({
     title: 'Revisar pesquisa do Radar',
-    hint: 'Nenhuma coleta paga é iniciada antes da confirmação.',
+    hint: 'Nenhuma pesquisa é iniciada antes da confirmação.',
     body: `
       <div class="radar-confirm-grid">
         <div><span class="small muted">Localização</span><strong>${esc(radar.location?.label || '')}</strong></div>
         <div><span class="small muted">Segmentos / nicho</span><strong>${esc(radar.filters.segments.join(', ') || radar.filters.keyword || radar.filters.companyName || '—')}</strong></div>
         <div><span class="small muted">Resultados</span><strong>Até ${fmtNumber(radar.limit)} empresas</strong></div>
-        <div><span class="small muted">Raio</span><strong>${radar.radiusKm ? `${fmtNumber(radar.radiusKm)} km` : 'Definido pela fonte'}</strong></div>
+        <div><span class="small muted">Raio</span><strong>${radar.radiusKm ? `${fmtNumber(radar.radiusKm)} km` : 'Automático'}</strong></div>
       </div>
       <label class="field"><span>Nome da pesquisa <small class="muted">(opcional)</small></span><input type="text" id="radar-run-name" maxlength="160" value="${esc(name)}" placeholder="Nome para localizar no histórico" /></label>
       ${labels.length ? `<div class="radar-chip-row">${labels.map((label) => `<span class="badge">${esc(label)}</span>`).join('')}</div>` : ''}
-      <div class="notice notice-warning"><span><strong>Atenção:</strong> esta ação executa o Apify Google Maps Scraper e pode consumir créditos. O teto configurado é de US$ 1,00 por execução. A fonte não garante a quantidade exata de empresas.</span></div>
+      <div class="notice notice-warning"><span><strong>Atenção:</strong> esta pesquisa pode consumir créditos e gerar cobrança. A quantidade de empresas encontrada pode variar.</span></div>
       <p class="small muted">Filtros de palavras, score, CRM, status de site e área visível são aplicados localmente aos resultados.</p>`,
     confirmLabel: 'Confirmar e executar',
     onConfirm: async (button) => {
@@ -1544,7 +1544,7 @@ async function executeSearch() {
     drawAreaCircle();
     renderHistory();
     startRadarPolling();
-    toast('Coleta iniciada. Os resultados aparecerão automaticamente.', 'success');
+    toast('Pesquisa iniciada. Os resultados aparecerão automaticamente.', 'success');
     document.querySelector('.radar-stage')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   } catch (error) {
     toast(errorMessage(error), 'error', 7000);
@@ -1578,9 +1578,9 @@ function startRadarPolling() {
       if (!ACTIVE_STATUSES.has(data.search.status)) {
         stopRadarPolling();
         if (data.search.status === 'completed') {
-          toast(`Coleta concluída: ${fmtNumber(data.search.resultsCount)} empresa(s).`, 'success');
+          toast(`Pesquisa concluída: ${fmtNumber(data.search.resultsCount)} empresa(s).`, 'success');
         } else if (data.search.status === 'failed') {
-          toast(`Coleta falhou: ${data.search.errorMessage || 'erro desconhecido'}`, 'error', 8000);
+          toast(`Pesquisa falhou: ${data.search.errorMessage || 'erro desconhecido'}`, 'error', 8000);
         }
         void loadHistory();
       }
@@ -1636,7 +1636,7 @@ async function openSearch(searchId, repeat = false) {
     history.replaceState(null, '', `#/radar/${searchId}`);
     renderRadarPage();
     if (repeat) {
-      toast('Parâmetros restaurados. Revise e confirme para iniciar uma nova coleta paga.', 'info', 7000);
+      toast('Parâmetros restaurados. Revise e confirme para iniciar uma nova pesquisa.', 'info', 7000);
       window.setTimeout(
         () =>
           document
@@ -1658,7 +1658,7 @@ function openSaveSearchModal() {
     hint: 'Ela continuará disponível no histórico para reabrir os parâmetros.',
     body: `
       <label class="field"><span>Nome da pesquisa</span><input type="text" id="radar-save-name" maxlength="160" value="${esc(radar.search.name)}" /></label>
-      <p class="small muted">Salvar não executa uma nova coleta e não consome créditos.</p>`,
+      <p class="small muted">Salvar não inicia uma nova pesquisa.</p>`,
     confirmLabel: 'Salvar pesquisa',
     onConfirm: async (button) => {
       setButtonBusy(button, true, 'Salvando...');
@@ -1689,7 +1689,7 @@ function resultById(id) {
 
 function detailReasons(result) {
   if (!Array.isArray(result.scoreReasons) || !result.scoreReasons.length) {
-    return '<p class="small muted">A pontuação usa os critérios atuais e os dados disponíveis na fonte.</p>';
+    return '<p class="small muted">A pontuação usa os critérios atuais e os dados disponíveis.</p>';
   }
   return `
     <ul class="radar-score-reasons">
@@ -1711,8 +1711,7 @@ function renderResultDetail(resultId) {
   if (result.email) contactRows.push(['E-mail', esc(result.email)]);
   if (result.website)
     contactRows.push(['Site', externalLink(result.website, hostname(result.website) || 'Abrir site')]);
-  if (result.googleMapsUrl)
-    contactRows.push(['Google Maps', externalLink(result.googleMapsUrl, 'Abrir ficha')]);
+  if (result.googleMapsUrl) contactRows.push(['Mapa', externalLink(result.googleMapsUrl, 'Abrir ficha')]);
   const statusSelect = result.saved
     ? `
       <label class="field"><span>Qualificação comercial</span>
@@ -1764,8 +1763,8 @@ function renderResultDetail(resultId) {
           <div class="radar-detail-side">
             <h3>Procedência</h3>
             <dl class="kv radar-detail-kv">
-              <dt>Fonte</dt><dd>Apify Google Maps</dd>
-              <dt>Coletado em</dt><dd>${esc(fmtDate(result.scrapedAt, true))}</dd>
+              <dt>Origem</dt><dd>Pesquisa de empresas</dd>
+              <dt>Pesquisado em</dt><dd>${esc(fmtDate(result.scrapedAt, true))}</dd>
               <dt>Coordenadas</dt><dd>${hasCoordinates(result) ? `${Number(result.latitude).toFixed(5)}, ${Number(result.longitude).toFixed(5)}` : 'Não disponíveis'}</dd>
               <dt>Site</dt><dd>${result.websiteStatus ? websiteBadge(result.websiteStatus) : '<span class="badge">Não verificado</span>'}</dd>
             </dl>
@@ -1774,7 +1773,7 @@ function renderResultDetail(resultId) {
       </div>
     </div>
     <div class="modal-foot">
-      <span class="small muted">O Radar não coleta e-mails nesta execução. Use o enriquecimento do lead no CRM quando disponível.</span>
+      <span class="small muted">O Radar não pesquisa e-mails nesta execução. Use o enriquecimento do lead no CRM quando disponível.</span>
       <button class="btn" type="button" data-action="close-modal">Fechar</button>
     </div>`);
 }
@@ -2017,10 +2016,10 @@ export async function handleRadarAction(element) {
   }
   if (action === 'radar-cancel') {
     confirmModal({
-      title: 'Cancelar coleta',
-      hint: 'O processamento no Apify será interrompido.',
-      body: '<p>Cancelar esta coleta? Os resultados parciais podem não ser importados e os créditos já consumidos não são reembolsados pelo provedor.</p>',
-      confirmLabel: 'Cancelar coleta',
+      title: 'Cancelar pesquisa',
+      hint: 'A pesquisa será interrompida.',
+      body: '<p>Cancelar esta pesquisa? Os resultados parciais podem não ser importados e os custos já incorridos não são reembolsados.</p>',
+      confirmLabel: 'Cancelar pesquisa',
       danger: true,
       onConfirm: async (button) => {
         setButtonBusy(button, true, 'Cancelando...');
@@ -2035,7 +2034,7 @@ export async function handleRadarAction(element) {
           updateSearchStatus();
           renderResults();
           void loadHistory();
-          toast('Coleta cancelada.', 'warning');
+          toast('Pesquisa cancelada.', 'warning');
         } catch (error) {
           toast(errorMessage(error), 'error');
         } finally {

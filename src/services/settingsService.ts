@@ -26,7 +26,7 @@ function mapSettings(row: SettingsRow): UserSettingsRecord {
     defaultState: row.default_state,
     defaultCountry: row.default_country,
     defaultNiche: row.default_niche,
-    defaultLimit: row.default_limit,
+    defaultLimit: Math.min(Math.max(row.default_limit, 1), config.maxSearchResults),
     favoriteNiches: row.favorite_niches ?? [],
     exportFields: row.export_fields ?? [],
     scoreWeights: row.score_weights,
@@ -46,7 +46,7 @@ export async function ensureSettings(userId: string): Promise<UserSettingsRecord
       defaultState: null,
       defaultCountry: 'Brasil',
       defaultNiche: null,
-      defaultLimit: 20,
+      defaultLimit: config.maxSearchResults,
       favoriteNiches: [],
       exportFields: EXPORT_FIELDS.slice(0, 9),
       scoreWeights: null,
@@ -74,7 +74,9 @@ export interface SettingsPatch {
 export async function updateSettings(userId: string, patch: SettingsPatch): Promise<UserSettingsRecord> {
   const current = await ensureSettings(userId);
   const merged = { ...current, ...patch };
-  const weights = patch.scoreWeights === null ? null : sanitizeWeights(patch.scoreWeights ?? current.scoreWeights ?? {});
+  const defaultLimit = Math.min(Math.max(Math.trunc(merged.defaultLimit), 1), config.maxSearchResults);
+  const weights =
+    patch.scoreWeights === null ? null : sanitizeWeights(patch.scoreWeights ?? current.scoreWeights ?? {});
   const exportFields = (merged.exportFields ?? []).filter((field) =>
     (EXPORT_FIELDS as readonly string[]).includes(field),
   );
@@ -101,7 +103,7 @@ export async function updateSettings(userId: string, patch: SettingsPatch): Prom
       merged.defaultState || null,
       merged.defaultCountry || 'Brasil',
       merged.defaultNiche || null,
-      merged.defaultLimit,
+      defaultLimit,
       merged.favoriteNiches ?? [],
       exportFields.length ? exportFields : EXPORT_FIELDS.slice(0, 9),
       weights ? JSON.stringify(weights) : null,
@@ -115,7 +117,6 @@ export async function updateSettings(userId: string, patch: SettingsPatch): Prom
 export interface IntegrationStatus {
   discovery: {
     configured: boolean;
-    provider: 'apify_google_maps' | 'google_places' | 'none';
     label: string;
     note: string;
   };
@@ -131,33 +132,20 @@ export interface IntegrationStatus {
 }
 
 export function getIntegrationStatus(): IntegrationStatus {
-  const apifyConfigured = isApifyConfigured();
-  const googleConfigured = Boolean(config.googleMapsApiKey);
+  const discoveryConfigured = isApifyConfigured() || Boolean(config.googleMapsApiKey);
   const emailConfigured = isEmailConfigured();
 
-  let discovery: IntegrationStatus['discovery'];
-  if (apifyConfigured) {
-    discovery = {
-      configured: true,
-      provider: 'apify_google_maps',
-      label: 'Apify Google Maps Scraper configurado',
-      note: 'O token global do servidor atende todos os usuarios. O Apify cobra por local raspado e add-ons; cada execucao tem limite de custo definido pelo servidor.',
-    };
-  } else if (googleConfigured) {
-    discovery = {
-      configured: true,
-      provider: 'google_places',
-      label: 'Google Maps Platform configurada',
-      note: 'Places API (New) e Geocoding API podem gerar cobranca por requisicao conforme a tabela vigente do Google.',
-    };
-  } else {
-    discovery = {
-      configured: false,
-      provider: 'none',
-      label: 'Fonte de descoberta nao configurada',
-      note: 'Defina APIFY_API_TOKEN no ambiente do servidor para habilitar pesquisas reais.',
-    };
-  }
+  const discovery: IntegrationStatus['discovery'] = discoveryConfigured
+    ? {
+        configured: true,
+        label: 'Pesquisa de empresas configurada',
+        note: 'A pesquisa de empresas esta habilitada no servidor.',
+      }
+    : {
+        configured: false,
+        label: 'Pesquisa de empresas nao configurada',
+        note: 'A pesquisa de empresas nao esta disponivel no momento.',
+      };
 
   return {
     discovery,
@@ -183,7 +171,9 @@ export async function getSystemDiagnostics(userId: string) {
     ),
     query<{ count: string }>('SELECT count(*)::text AS count FROM leads WHERE user_id = $1', [userId]),
     query<{ count: string }>('SELECT count(*)::text AS count FROM searches WHERE user_id = $1', [userId]),
-    query<{ count: string }>('SELECT count(*)::text AS count FROM lead_activities WHERE user_id = $1', [userId]),
+    query<{ count: string }>('SELECT count(*)::text AS count FROM lead_activities WHERE user_id = $1', [
+      userId,
+    ]),
   ]);
 
   return {
@@ -210,7 +200,7 @@ export async function getSystemDiagnostics(userId: string) {
     limits: {
       maxSearchResults: config.maxSearchResults,
       exportMaxRows: config.exportMaxRows,
-      searchResultHardLimit: 20,
+      searchResultHardLimit: config.maxSearchResults,
     },
     timestamp: new Date().toISOString(),
   };

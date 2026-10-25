@@ -114,8 +114,7 @@ function mapsTestMarkup() {
   if (result.ok === false) {
     return `<div class="notice notice-danger" style="margin-top:12px"><span><strong>Teste falhou.</strong> ${esc(result.message)}</span></div>`;
   }
-  const provider = result.provider === 'apify_google_maps' ? 'Apify' : 'Google Maps';
-  return `<div class="notice notice-success" style="margin-top:12px"><span><strong>Conectividade confirmada.</strong> ${provider} respondeu em ${fmtNumber(result.latencyMs)} ms. ${result.provider === 'apify_google_maps' ? 'Nenhuma execução paga foi iniciada.' : 'A chamada consumiu uma requisição real.'}</span></div>`;
+  return `<div class="notice notice-success" style="margin-top:12px"><span><strong>Conectividade confirmada.</strong> O serviço respondeu em ${fmtNumber(result.latencyMs)} ms. Nenhuma pesquisa foi iniciada.</span></div>`;
 }
 
 function diagnosticsMarkup() {
@@ -172,10 +171,10 @@ export function integrationsTabMarkup() {
         <p>As chaves ficam apenas no servidor. Nenhum segredo é enviado ao navegador.</p>
         <div class="stack" style="gap:10px">
           ${integrationCard({
-            title: 'Descoberta de empresas',
+            title: 'Pesquisa de empresas',
             configured: maps === true,
             label: mapsInfo.label || (maps ? 'Configurada no servidor' : 'Não configurada no servidor'),
-            note: mapsNote || 'Apify Google Maps Scraper com token global do servidor para todos os usuários.',
+            note: mapsNote || 'Pesquisa de empresas habilitada para todos os usuários.',
             action: `<button class="btn btn-sm" type="button" data-action="settings-test-maps" ${maps === false || testing ? 'disabled' : ''}>${testing ? 'Testando...' : 'Testar conexão'}</button>`,
           })}
           ${integrationCard({
@@ -192,7 +191,7 @@ export function integrationsTabMarkup() {
           })}
         </div>
         ${mapsTestMarkup()}
-        <p class="small muted" style="margin-top:10px">O teste do Apify valida o token e o acesso ao actor sem iniciar nenhuma execução paga.</p>
+        <p class="small muted" style="margin-top:10px">O teste valida a conectividade da pesquisa de empresas sem iniciar nenhuma pesquisa.</p>
       </section>
 
       <section class="settings-section">
@@ -291,11 +290,8 @@ export async function handleAdvancedSettingsAction(element, rerender) {
       state.settingsCache.mapsTest = {
         ok: true,
         latencyMs: result.latencyMs,
-        resultCount: result.resultCount,
-        provider: result.provider,
       };
-      const provider = result.provider === 'apify_google_maps' ? 'Apify' : 'Google Maps';
-      toast(`${provider} respondeu em ${fmtNumber(result.latencyMs)} ms.`, 'success');
+      toast(`Serviço de pesquisa respondeu em ${fmtNumber(result.latencyMs)} ms.`, 'success');
       await refreshIntegrations();
     } catch (error) {
       state.settingsCache.mapsTest = { ok: false, message: errorMessage(error) };

@@ -22,7 +22,7 @@ const createSchema = z.object({
     (value) => (value === '' || value === null ? undefined : value),
     z.coerce.number().int().min(1).max(50).optional(),
   ),
-  limit: z.coerce.number().int().min(1).max(config.maxSearchResults).default(20),
+  limit: z.coerce.number().int().min(1).max(config.maxSearchResults).default(config.maxSearchResults),
 });
 
 searchesRouter.post(
@@ -48,7 +48,10 @@ searchesRouter.post(
     if (!result.async) {
       if (settings.allowEnrichment) {
         void runSearchEnrichment(req.user!.id, result.search.id).catch((error) => {
-          logger.error({ err: error, searchId: result.search.id }, 'Falha no enriquecimento em segundo plano');
+          logger.error(
+            { err: error, searchId: result.search.id },
+            'Falha no enriquecimento em segundo plano',
+          );
         });
       } else {
         await completeSearchWithoutEnrichment(req.user!.id, result.search.id);
@@ -60,14 +63,11 @@ searchesRouter.post(
       city: body.city,
       country: body.country,
       found: result.stats.found,
-      provider: result.search.provider,
     });
     res.status(201).json({
       ...result,
       enrichmentScheduled: settings.allowEnrichment,
-      notice: result.async
-        ? 'A pesquisa usa o Apify Google Maps Scraper em segundo plano e pode gerar cobranca. A origem de cada informacao e registrada.'
-        : 'A pesquisa usa a Google Maps Platform e pode gerar cobranca. Nenhum dado ausente e inventado; a origem de cada informacao e registrada.',
+      notice: result.async ? 'A pesquisa foi iniciada e continua em segundo plano.' : 'Pesquisa concluida.',
     });
   }),
 );

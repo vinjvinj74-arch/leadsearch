@@ -16,6 +16,13 @@ import {
   normalizeWebsiteUrl,
 } from '../lib/normalize.js';
 
+export function publicSourceName(source: string): string {
+  if (source === 'apify_google_maps' || source === 'google_places') return 'Pesquisa de empresas';
+  if (source === 'website_enrichment') return 'Enriquecimento do site';
+  if (source === 'website_check') return 'Verificacao do site';
+  return 'Origem registrada';
+}
+
 export interface LeadRow {
   id: string;
   user_id: string;
@@ -99,7 +106,10 @@ export function mapLead(row: LeadRow) {
   };
 }
 
-export function scoreForLead(row: LeadRow, weights: Partial<ScoreWeights> | null): { score: number; reasons: ScoreReason[] } {
+export function scoreForLead(
+  row: LeadRow,
+  weights: Partial<ScoreWeights> | null,
+): { score: number; reasons: ScoreReason[] } {
   return computeScore(
     {
       websiteStatus: row.website_status,
@@ -158,7 +168,14 @@ export async function getLeadDetail(userId: string, leadId: string) {
        FROM lead_sources WHERE lead_id = $1 ORDER BY collected_at DESC LIMIT 100`,
       [leadId],
     ),
-    query<{ id: string; kind: string; value: string; source_url: string | null; source_type: string; collected_at: Date }>(
+    query<{
+      id: string;
+      kind: string;
+      value: string;
+      source_url: string | null;
+      source_type: string;
+      collected_at: Date;
+    }>(
       `SELECT id, kind, value, source_url, source_type, collected_at
        FROM lead_contacts WHERE lead_id = $1 ORDER BY collected_at DESC LIMIT 100`,
       [leadId],
@@ -179,10 +196,10 @@ export async function getLeadDetail(userId: string, leadId: string) {
     })),
     sources: sources.rows.map((row) => ({
       id: row.id,
-      source: row.source,
-      sourceUrl: row.source_url,
+      source: publicSourceName(row.source),
+      sourceUrl:
+        row.source === 'website_enrichment' || row.source === 'website_check' ? row.source_url : null,
       collectedAt: iso(row.collected_at),
-      metadata: row.metadata,
     })),
     contacts: contacts.rows.map((row) => ({
       id: row.id,
@@ -264,7 +281,10 @@ export async function listLeads(userId: string, filters: LeadFilters, page: numb
   const { where, values } = buildFilters(userId, filters);
   const sortColumn = SORTABLE[filters.sort ?? 'created_at'] ?? SORTABLE.created_at;
   const order = filters.order === 'asc' ? 'ASC' : 'DESC';
-  const countResult = await query<{ count: string }>(`SELECT count(*)::text AS count FROM leads l WHERE ${where}`, values);
+  const countResult = await query<{ count: string }>(
+    `SELECT count(*)::text AS count FROM leads l WHERE ${where}`,
+    values,
+  );
   const total = Number(countResult.rows[0]?.count ?? 0);
 
   const pagedValues = [...values, pageSize, (page - 1) * pageSize];
@@ -281,7 +301,11 @@ export async function listLeads(userId: string, filters: LeadFilters, page: numb
   };
 }
 
-export async function listLeadsForExport(userId: string, filters: LeadFilters, limit: number): Promise<LeadRow[]> {
+export async function listLeadsForExport(
+  userId: string,
+  filters: LeadFilters,
+  limit: number,
+): Promise<LeadRow[]> {
   const { where, values } = buildFilters(userId, filters);
   const result = await query<LeadRow>(
     `SELECT l.* FROM leads l WHERE ${where} ORDER BY l.created_at DESC LIMIT $${values.length + 1}`,

@@ -77,9 +77,7 @@ const geocodeCache = new Map<string, { latitude: number; longitude: number } | n
 
 function requireToken(): string {
   if (!config.apifyApiToken) {
-    throw integrationNotConfigured(
-      'Apify nao configurado. Defina APIFY_API_TOKEN no ambiente do servidor para habilitar pesquisas reais.',
-    );
+    throw integrationNotConfigured('A pesquisa de empresas nao esta disponivel no momento.');
   }
   return config.apifyApiToken;
 }
@@ -120,43 +118,25 @@ async function apifyRequest(path: string, init: RequestInit = {}, timeoutMs = 30
     });
   } catch (error) {
     if (error instanceof Error && error.name === 'TimeoutError') {
-      throw upstreamError('Tempo limite excedido ao consultar o Apify.');
+      throw upstreamError('Tempo limite excedido ao processar a pesquisa.');
     }
-    logger.warn({ err: error }, 'Falha de rede ao consultar o Apify');
-    throw upstreamError('Nao foi possivel conectar ao Apify.');
+    logger.warn({ err: error }, 'Falha de rede ao consultar o servico de pesquisa');
+    throw upstreamError('Nao foi possivel processar a pesquisa no momento.');
   }
 
   if (!response.ok) {
-    let providerMessage = '';
-    try {
-      const payload = (await response.json()) as ApifyRunResponse;
-      providerMessage = payload.error?.message?.trim() ?? '';
-    } catch {
-      providerMessage = '';
-    }
-
+    logger.warn({ status: response.status }, 'Servico de pesquisa externo retornou erro');
     if (response.status === 401 || response.status === 403) {
-      throw upstreamError('O Apify recusou o token configurado. Verifique APIFY_API_TOKEN no servidor.', {
-        httpStatus: response.status,
-      });
+      throw upstreamError('A pesquisa nao esta disponivel no momento.');
     }
     if (response.status === 402) {
-      throw upstreamError('A conta Apify nao possui creditos suficientes para executar a pesquisa.', {
-        httpStatus: response.status,
-      });
+      throw upstreamError('Nao foi possivel iniciar a pesquisa no momento.');
     }
     if (response.status === 429) {
-      throw upstreamError('Limite de requisicoes do Apify atingido. Aguarde e tente novamente.', {
-        httpStatus: response.status,
-      });
+      throw upstreamError('Muitas pesquisas em andamento. Aguarde e tente novamente.');
     }
 
-    throw upstreamError(
-      providerMessage
-        ? `O Apify recusou a solicitacao: ${providerMessage}`
-        : `O Apify retornou erro HTTP ${response.status}.`,
-      { httpStatus: response.status },
-    );
+    throw upstreamError('Nao foi possivel iniciar a pesquisa.');
   }
 
   return response;
@@ -165,9 +145,9 @@ async function apifyRequest(path: string, init: RequestInit = {}, timeoutMs = 30
 function countryCodeFor(country: string): string | undefined {
   const normalized = country.trim().toLowerCase();
   if (!normalized || normalized.includes('brasil') || normalized === 'brazil' || normalized === 'br') {
-    return 'BR';
+    return 'br';
   }
-  return normalized.length === 2 ? normalized.toUpperCase() : undefined;
+  return normalized.length === 2 ? normalized : undefined;
 }
 
 function sleep(ms: number): Promise<void> {
@@ -222,7 +202,7 @@ async function geocodeForRadius(
 async function buildActorInput(params: SearchParams): Promise<Record<string, unknown>> {
   const input: Record<string, unknown> = {
     searchStringsArray: [params.niche],
-    maxCrawledPlacesPerSearch: Math.min(Math.max(params.limit, 1), 20),
+    maxCrawledPlacesPerSearch: Math.min(Math.max(params.limit, 1), config.maxSearchResults),
     language: 'pt-BR',
     skipClosedPlaces: false,
     scrapePlaceDetailPage: false,
@@ -232,7 +212,7 @@ async function buildActorInput(params: SearchParams): Promise<Record<string, unk
   };
 
   const countryCode = countryCodeFor(params.country);
-  if (countryCode) input.countryCode = countryCode;
+  if (countryCode) input.countryCode = countryCode.toLowerCase();
 
   if (params.radiusKm && params.radiusKm > 0) {
     const coordinates = await geocodeForRadius(params.city, params.state, params.country);
@@ -266,7 +246,7 @@ export async function startSearchRun(
   const payload = (await response.json().catch(() => ({}))) as ApifyRunResponse;
   const run = payload.data;
   if (!run?.id) {
-    throw upstreamError('O Apify iniciou a execucao sem retornar um identificador valido.');
+    throw upstreamError('Nao foi possivel iniciar a pesquisa.');
   }
   return {
     runId: run.id,
@@ -279,7 +259,7 @@ async function getRun(runId: string): Promise<ApifyRun> {
   const response = await apifyRequest(`/actor-runs/${encodeURIComponent(runId)}`, {}, 20_000);
   const payload = (await response.json().catch(() => ({}))) as ApifyRunResponse;
   if (!payload.data?.id) {
-    throw upstreamError('O Apify retornou uma execucao invalida.');
+    throw upstreamError('Nao foi possivel acompanhar a pesquisa.');
   }
   return payload.data;
 }
@@ -287,9 +267,9 @@ async function getRun(runId: string): Promise<ApifyRun> {
 export async function abortActorRun(runId: string): Promise<void> {
   try {
     await apifyRequest(`/actor-runs/${encodeURIComponent(runId)}/abort`, { method: 'POST' }, 15_000);
-    logger.warn({ runId }, 'Execucao do Apify abortada');
+    logger.warn({ runId }, 'Execucao externa abortada');
   } catch (error) {
-    logger.warn({ err: error, runId }, 'Falha ao abortar execucao do Apify');
+    logger.warn({ err: error, runId }, 'Falha ao abortar execucao externa');
   }
 }
 
@@ -300,17 +280,13 @@ export async function waitForSearchRun(runId: string): Promise<ApifyRun> {
 
     if (run.status === 'SUCCEEDED') return run;
     if (run.status === 'FAILED' || run.status === 'ABORTED' || run.status === 'TIMED-OUT') {
-      throw upstreamError(
-        run.error
-          ? `A execucao do Apify falhou: ${run.error}`
-          : `A execucao do Apify terminou com status ${run.status}.`,
-        { providerStatus: run.status },
-      );
+      logger.warn({ status: run.status }, 'Pesquisa externa nao foi concluida');
+      throw upstreamError('Nao foi possivel concluir a pesquisa.');
     }
 
     if (Date.now() - startedAt > config.apify.maxWaitMs) {
       await abortActorRun(runId);
-      throw upstreamError('Tempo limite excedido aguardando o Apify. A execucao foi interrompida.');
+      throw upstreamError('Tempo limite excedido. A pesquisa foi interrompida.');
     }
 
     await sleep(POLL_INTERVAL_MS);
@@ -353,21 +329,22 @@ function mapPlace(item: ApifyPlaceItem): PlaceResult | null {
 }
 
 export async function fetchSearchResults(datasetId: string, limit: number): Promise<PlaceResult[]> {
+  const safeLimit = Math.min(Math.max(Math.trunc(limit), 1), config.maxSearchResults);
   const url = new URL(`${APIFY_BASE}/datasets/${encodeURIComponent(datasetId)}/items`);
   url.searchParams.set('format', 'json');
   url.searchParams.set('clean', 'true');
-  url.searchParams.set('limit', String(Math.min(Math.max(limit, 1), 20)));
+  url.searchParams.set('limit', String(safeLimit));
 
   const response = await apifyRequest(url.toString(), {}, 30_000);
   const payload = (await response.json().catch(() => null)) as unknown;
   if (!Array.isArray(payload)) {
-    throw upstreamError('O Apify retornou resultados em formato invalido.');
+    throw upstreamError('Nao foi possivel concluir a pesquisa.');
   }
 
   return payload
     .map((item) => mapPlace(item as ApifyPlaceItem))
     .filter((item): item is PlaceResult => item !== null)
-    .slice(0, limit);
+    .slice(0, safeLimit);
 }
 
 export async function startRadarRun(
@@ -377,7 +354,10 @@ export async function startRadarRun(
   const url = new URL(`${APIFY_BASE}/acts/${config.apify.actor}/runs`);
   url.searchParams.set('timeout', String(config.apify.timeoutSeconds));
   url.searchParams.set('maxTotalChargeUsd', String(config.apify.maxTotalChargeUsd));
-  url.searchParams.set('maxItems', String(Math.min(Math.max(Math.trunc(maxItems), 1), 20)));
+  url.searchParams.set(
+    'maxItems',
+    String(Math.min(Math.max(Math.trunc(maxItems), 1), config.maxSearchResults)),
+  );
 
   const response = await apifyRequest(url.toString(), {
     method: 'POST',
@@ -386,7 +366,7 @@ export async function startRadarRun(
   const payload = (await response.json().catch(() => ({}))) as ApifyRunResponse;
   const run = payload.data;
   if (!run?.id) {
-    throw upstreamError('O Apify iniciou a execucao sem retornar um identificador valido.');
+    throw upstreamError('Nao foi possivel iniciar a pesquisa.');
   }
   return {
     runId: run.id,
@@ -448,29 +428,27 @@ function mapRadarPlace(item: Record<string, unknown>): RadarApifyPlace | null {
 }
 
 export async function fetchRadarResults(datasetId: string, limit: number): Promise<RadarApifyPlace[]> {
+  const safeLimit = Math.min(Math.max(Math.trunc(limit), 1), config.maxSearchResults);
   const url = new URL(`${APIFY_BASE}/datasets/${encodeURIComponent(datasetId)}/items`);
   url.searchParams.set('format', 'json');
   url.searchParams.set('clean', 'true');
-  url.searchParams.set('limit', String(Math.min(Math.max(limit, 1), 20)));
+  url.searchParams.set('limit', String(safeLimit));
 
   const response = await apifyRequest(url.toString(), {}, 30_000);
   const payload = (await response.json().catch(() => null)) as unknown;
   if (!Array.isArray(payload)) {
-    throw upstreamError('O Apify retornou resultados em formato invalido.');
+    throw upstreamError('Nao foi possivel concluir a pesquisa.');
   }
 
   return payload
     .map((item) => mapRadarPlace(item as Record<string, unknown>))
     .filter((item): item is RadarApifyPlace => item !== null)
-    .slice(0, limit);
+    .slice(0, safeLimit);
 }
 
 export async function testApifyConnection(): Promise<{
   ok: boolean;
   latencyMs: number;
-  provider: 'apify_google_maps';
-  actor: string;
-  plan: string | null;
 }> {
   const started = Date.now();
   const [userResponse, actorResponse] = await Promise.all([
@@ -479,14 +457,11 @@ export async function testApifyConnection(): Promise<{
   ]);
   const user = (await userResponse.json().catch(() => ({}))) as ApifyUserResponse;
   if (!user.data?.username) {
-    throw upstreamError('O Apify nao confirmou a conta vinculada ao token.');
+    throw upstreamError('Nao foi possivel validar a pesquisa de empresas.');
   }
   await actorResponse.json().catch(() => null);
   return {
     ok: true,
     latencyMs: Date.now() - started,
-    provider: 'apify_google_maps',
-    actor: config.apify.actor,
-    plan: user.data.plan?.id ?? null,
   };
 }

@@ -183,15 +183,16 @@ function mapSearch(row: RadarSearchRow) {
     },
     radiusKm: row.radius_km,
     filters,
-    searchTerms: row.search_terms,
     resultLimit: row.result_limit,
-    provider: row.provider,
-    providerRunId: row.provider_run_id,
     status: row.status,
     resultsCount: row.results_count,
     savedCount: row.saved_count ?? 0,
-    errorMessage: row.error_message,
-    costNote: row.cost_note,
+    errorMessage:
+      row.status === 'failed'
+        ? 'Nao foi possivel concluir a pesquisa.'
+        : row.status === 'cancelled'
+          ? 'Pesquisa cancelada.'
+          : null,
     isSaved: row.is_saved,
     createdAt: iso(row.created_at),
     updatedAt: iso(row.updated_at),
@@ -400,7 +401,7 @@ async function storeRadarResults(
   places: RadarApifyPlace[],
   weights: Partial<ScoreWeights> | null,
 ): Promise<number> {
-  const unique = dedupeRadarPlaces(places, 20);
+  const unique = dedupeRadarPlaces(places, config.maxSearchResults);
   await withTransaction(async (client) => {
     for (const { place, fingerprint } of unique) {
       const existing = await findExistingLeadForRadar(client, userId, place);
@@ -489,7 +490,7 @@ async function processRadarSearch(
       [searchId, userId],
     );
     if (current.rows[0]?.status === 'cancelled') return;
-    if (!run.defaultDatasetId) throw new Error('A execucao do Apify nao retornou um dataset.');
+    if (!run.defaultDatasetId) throw new Error('Nao foi possivel concluir a pesquisa.');
 
     const places = await fetchRadarResults(run.defaultDatasetId, limit);
     const afterFetch = await query<{ status: RadarStatus }>(
@@ -519,19 +520,20 @@ async function processRadarSearch(
         completed_at = now(),
         updated_at = now()
        WHERE id = $1 AND user_id = $2 AND status <> 'cancelled'`,
-      [searchId, userId, error instanceof Error ? error.message : 'Falha na pesquisa do Radar.'],
+      [searchId, userId, 'Nao foi possivel concluir a pesquisa.'],
     );
   }
 }
 
 export async function createRadarSearch(userId: string, input: RadarCreateInput) {
   if (!isApifyConfigured()) {
-    throw integrationNotConfigured(
-      'A fonte de descoberta nao esta configurada. Defina APIFY_API_TOKEN no servidor.',
-    );
+    throw integrationNotConfigured('A pesquisa de empresas nao esta disponivel no momento.');
   }
 
-  const limit = Math.min(Math.max(Math.trunc(input.limit ?? 20), 1), config.maxSearchResults);
+  const limit = Math.min(
+    Math.max(Math.trunc(input.limit ?? config.maxSearchResults), 1),
+    config.maxSearchResults,
+  );
   const terms = termsFor(input.filters);
   if (!terms.length) {
     throw conflict('Informe ao menos um segmento, nicho, palavra-chave ou nome de empresa.');
@@ -587,8 +589,7 @@ export async function createRadarSearch(userId: string, input: RadarCreateInput)
     companyName: cleanText(input.filters.companyName),
   };
   const name = cleanText(input.name).slice(0, 160) || defaultName(filters, location.label);
-  const costNote =
-    'Executa o Apify Google Maps Scraper e pode consumir creditos. O teto desta execucao e US$ 1,00; o total de locais e limitado pela quantidade escolhida.';
+  const costNote = 'A pesquisa pode consumir creditos e gerar cobranca.';
 
   const releaseSlot = reserveApifyRun();
   let search: RadarSearchRow | null = null;
@@ -599,7 +600,7 @@ export async function createRadarSearch(userId: string, input: RadarCreateInput)
       await client.query(
         `UPDATE radar_searches SET
           status = 'failed',
-          error_message = 'Execucao interrompida por tempo limite.',
+          error_message = 'Pesquisa interrompida por tempo limite.',
           completed_at = now(),
           updated_at = now()
          WHERE user_id = $1 AND status IN ('pending', 'running')
@@ -683,7 +684,7 @@ export async function createRadarSearch(userId: string, input: RadarCreateInput)
           completed_at = now(),
           updated_at = now()
          WHERE id = $1 AND user_id = $2 AND status <> 'cancelled'`,
-        [search.id, userId, error instanceof Error ? error.message : 'Falha ao iniciar a pesquisa do Radar.'],
+        [search.id, userId, 'Nao foi possivel iniciar a pesquisa.'],
       ).catch(() => undefined);
     }
     throw error;
@@ -838,8 +839,6 @@ export async function saveRadarResults(
       const saved = await upsertLeadFromPlace(client, userId, null, place, weights, location, {
         name: 'apify_google_maps',
         metadata: {
-          actor: config.apify.actor,
-          runId: search.provider_run_id,
           radarSearchId: searchId,
           radarResultId: row.id,
           source: 'radar',
@@ -901,11 +900,11 @@ export async function exportRadarResults(
     'Pontuacao',
     'Status no CRM',
     'Salvo no CRM',
-    'Google Maps',
+    'Mapa',
     'Latitude',
     'Longitude',
     'Pesquisa',
-    'Coletado em',
+    'Pesquisado em',
   ];
   const rows = result.rows.map((row) => {
     const mapped = mapResult(row);
@@ -925,11 +924,11 @@ export async function exportRadarResults(
       Pontuacao: mapped.score,
       'Status no CRM': mapped.crmStatus ?? '',
       'Salvo no CRM': mapped.saved ? 'Sim' : 'Nao',
-      'Google Maps': mapped.googleMapsUrl ?? '',
+      Mapa: mapped.googleMapsUrl ?? '',
       Latitude: mapped.latitude ?? '',
       Longitude: mapped.longitude ?? '',
       Pesquisa: search.name,
-      'Coletado em': mapped.scrapedAt ?? '',
+      'Pesquisado em': mapped.scrapedAt ?? '',
     };
   });
   return toCsv(headers, rows);

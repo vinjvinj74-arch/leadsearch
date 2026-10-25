@@ -156,7 +156,7 @@ function leadModalMarkup(lead) {
           (source) => `
           <div class="history-item">
             <div>
-              <strong>${esc(SOURCE_LABELS[source.source] ?? source.source)}</strong>
+              <strong>${esc(SOURCE_LABELS[source.source] ?? source.source ?? 'Origem registrada')}</strong>
               <small>${esc(fmtDate(source.collectedAt, true))}${source.sourceUrl ? ` · ${esc(hostname(source.sourceUrl))}` : ''}</small>
             </div>
           </div>`,
@@ -177,7 +177,7 @@ function leadModalMarkup(lead) {
         </div>
       </div>
       <div class="row">
-        ${lead.googleMapsUrl ? externalLink(lead.googleMapsUrl, 'Google Maps', 'class="btn btn-sm"') : ''}
+        ${lead.googleMapsUrl ? externalLink(lead.googleMapsUrl, 'Mapa', 'class="btn btn-sm"') : ''}
         <button class="btn btn-ghost btn-icon modal-close" type="button" data-action="close-modal" aria-label="Fechar">×</button>
       </div>
     </div>
@@ -205,7 +205,7 @@ function leadModalMarkup(lead) {
               <div class="info-item"><small>Site</small><span>${lead.website ? externalLink(lead.website, hostname(lead.website)) : '—'}</span></div>
               <div class="info-item"><small>Endereço</small><span>${esc(lead.address || '—')}</span></div>
               <div class="info-item"><small>País</small><span>${esc(lead.country || '—')}</span></div>
-              <div class="info-item"><small>Avaliação Google</small><span>${lead.rating === null ? '—' : `${esc(lead.rating)} ★ (${fmtNumber(lead.reviewsCount)})`}</span></div>
+              <div class="info-item"><small>Avaliação</small><span>${lead.rating === null ? '—' : `${esc(lead.rating)} ★ (${fmtNumber(lead.reviewsCount)})`}</span></div>
               <div class="info-item"><small>Último contato</small><span>${esc(fmtDate(lead.lastContactedAt, true))}</span></div>
               <div class="info-item"><small>Site verificado</small><span>${esc(fmtDate(lead.websiteLastCheckedAt, true))}</span></div>
             </div>

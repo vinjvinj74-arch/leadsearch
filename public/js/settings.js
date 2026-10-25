@@ -29,6 +29,8 @@ import {
   securityTabMarkup,
 } from './settingsAdvanced.js';
 
+const MAX_SEARCH_RESULTS = 5;
+
 const TABS = [
   ['profile', 'Perfil'],
   ['preferences', 'Preferências'],
@@ -122,8 +124,8 @@ function preferencesTabMarkup() {
             </label>
             <label class="field">
               <span>Limite padrão de resultados</span>
-              <input type="number" name="defaultLimit" min="1" max="20" step="1" value="${esc(settings.defaultLimit ?? 20)}" />
-              <small class="hint">Entre 1 e 20 empresas por pesquisa.</small>
+              <input type="number" name="defaultLimit" min="1" max="5" step="1" value="${esc(settings.defaultLimit ?? MAX_SEARCH_RESULTS)}" />
+              <small class="hint">Entre 1 e 5 empresas por pesquisa.</small>
             </label>
             <label class="field">
               <span>Retenção de dados (dias)</span>
@@ -310,8 +312,8 @@ async function savePreferences(form) {
   const data = Object.fromEntries(new FormData(form).entries());
   const limit = Number(data.defaultLimit);
   const retention = Number(data.retentionDays);
-  if (!Number.isInteger(limit) || limit < 1 || limit > 20) {
-    showFormError(form, 'O limite padrão deve ser um número inteiro entre 1 e 20.');
+  if (!Number.isInteger(limit) || limit < 1 || limit > MAX_SEARCH_RESULTS) {
+    showFormError(form, `O limite padrão deve ser um número inteiro entre 1 e ${MAX_SEARCH_RESULTS}.`);
     return;
   }
   if (!Number.isInteger(retention) || retention < 30 || retention > 3650) {

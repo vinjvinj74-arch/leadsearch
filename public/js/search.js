@@ -18,6 +18,8 @@ import {
   clearFormMessages,
 } from './core.js';
 
+const MAX_SEARCH_RESULTS = 5;
+
 function favoritesMarkup() {
   const favorites = state.settings?.favoriteNiches ?? [];
   if (!favorites.length) return '';
@@ -53,7 +55,7 @@ function searchStatusMarkup() {
 
       ${
         isFailed
-          ? `<div class="notice notice-danger"><span><strong>A pesquisa falhou.</strong> ${esc(search.errorMessage || 'Verifique a integração de descoberta e tente novamente.')}</span></div>`
+          ? `<div class="notice notice-danger"><span><strong>A pesquisa falhou.</strong> ${esc(search.errorMessage || 'Não foi possível concluir a pesquisa. Tente novamente.')}</span></div>`
           : ''
       }
 
@@ -79,8 +81,6 @@ function searchStatusMarkup() {
         }
         <span class="badge">${esc(fmtDate(search.createdAt, true))}</span>
       </div>
-
-      ${search.costNote ? `<p class="small muted">${esc(search.costNote)}</p>` : ''}
 
       <div class="action-row">
         <button class="btn btn-primary" type="button" data-action="search-view-leads" ${search.resultsCount > 0 ? '' : 'disabled'}>Ver leads desta pesquisa</button>
@@ -186,7 +186,7 @@ export async function renderSearch() {
   const settings = state.settings ?? {};
   const warning =
     mapsConfigured() === false
-      ? `<div class="notice notice-warning"><span><strong>Descoberta não configurada.</strong> A pesquisa real exige <span class="mono">APIFY_API_TOKEN</span> no servidor. Você pode preparar os filtros agora.</span></div>`
+      ? `<div class="notice notice-warning"><span><strong>Pesquisa não configurada.</strong> A pesquisa de empresas não está disponível no momento. Você pode preparar os filtros agora.</span></div>`
       : '';
 
   dom.main.innerHTML = `
@@ -196,7 +196,7 @@ export async function renderSearch() {
           <div class="panel-head">
             <div>
               <h2>Nova prospecção</h2>
-              <p>Informe nicho e localização. A origem de cada dado é registrada.</p>
+              <p>Informe nicho e localização. A pesquisa encontra empresas com base nesses critérios.</p>
             </div>
           </div>
           <div class="panel-body">
@@ -222,31 +222,31 @@ export async function renderSearch() {
                 <label class="field">
                   <span>Raio (km)</span>
                   <input type="number" name="radiusKm" min="1" max="50" step="1" placeholder="Opcional" />
-                  <small class="hint">Quando informado, usa também o Geocoding (custo adicional).</small>
+                  <small class="hint">Quando informado, pode gerar custo adicional.</small>
                 </label>
                 <label class="field">
                   <span>Limite de resultados</span>
                   <select name="limit">
-                    ${Array.from({ length: 20 }, (_, index) => index + 1)
+                    ${Array.from({ length: MAX_SEARCH_RESULTS }, (_, index) => index + 1)
                       .map((value) =>
                         option(
                           value,
                           `${value} ${value === 1 ? 'empresa' : 'empresas'}`,
-                          settings.defaultLimit ?? 20,
+                          settings.defaultLimit ?? MAX_SEARCH_RESULTS,
                         ),
                       )
                       .join('')}
                   </select>
                 </label>
                 <div class="field field-full">
-                  <span class="hint">Cada pesquisa usa a Google Places API (New) e pode gerar cobrança conforme a tabela vigente do Google.</span>
+                  <span class="hint">Cada pesquisa pode gerar custo e consumir créditos.</span>
                 </div>
               </div>
               ${favoritesMarkup()}
               <p class="form-error" data-form-error role="alert" hidden></p>
               <div class="row">
                 <button class="btn btn-primary" type="submit">Pesquisar empresas</button>
-                <span class="small muted">Máximo de 20 resultados por pesquisa.</span>
+                <span class="small muted">Máximo de 5 resultados por pesquisa.</span>
               </div>
             </form>
           </div>
@@ -289,8 +289,8 @@ export async function renderSearch() {
           </div>
           <div class="panel-body">
             <div class="stack small muted">
-              <p><strong class="small" style="color:var(--text)">1. Descoberta</strong><br>Empresas são buscadas no Google Maps via Apify pelo servidor, com base no nicho e localização.</p>
-              <p><strong class="small" style="color:var(--text)">2. Enriquecimento</strong><br>Quando o lead tem site, canais publicados são lidos com proteção contra SSRF. Nada é inventado.</p>
+              <p><strong class="small" style="color:var(--text)">1. Pesquisa</strong><br>As empresas são encontradas a partir do nicho e da localização informados.</p>
+              <p><strong class="small" style="color:var(--text)">2. Contatos</strong><br>Quando disponíveis publicamente, canais do site podem complementar o lead. Nada é inventado.</p>
               <p><strong class="small" style="color:var(--text)">3. Qualificação</strong><br>O score explica os pontos fortes e os problemas digitais encontrados.</p>
               <p><strong class="small" style="color:var(--text)">4. Acompanhamento</strong><br>Status, atividades e próximos passos ficam registrados no lead.</p>
             </div>
