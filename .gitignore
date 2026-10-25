@@ -10,3 +10,6 @@ coverage/
 .vscode/
 .idea/
 .railway/
+
+# Local Netlify folder
+.netlify
