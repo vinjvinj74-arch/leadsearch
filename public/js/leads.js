@@ -111,23 +111,23 @@ function leadsTableMarkup() {
               const isSelected = selected.has(lead.id);
               return `
                 <tr class="is-clickable" data-lead-id="${esc(lead.id)}" tabindex="0">
-                  <td><input type="checkbox" data-lead-select value="${esc(lead.id)}" aria-label="Selecionar ${esc(lead.name)}" ${isSelected ? 'checked' : ''} /></td>
-                  <td>
+                  <td class="cell-select"><input type="checkbox" data-lead-select value="${esc(lead.id)}" aria-label="Selecionar ${esc(lead.name)}" ${isSelected ? 'checked' : ''} /></td>
+                  <td class="cell-company">
                     <div class="cell-main">
                       <strong>${esc(lead.name)}</strong>
                       <small>${esc(lead.segment || 'Segmento não informado')} · ${esc([lead.city, lead.state].filter(Boolean).join('/') || 'Local não informado')}</small>
                     </div>
                   </td>
-                  <td>
+                  <td class="cell-contact-cell">
                     <div class="cell-contact">
                       <span>${lead.phone ? esc(lead.phone) : '<span class="muted">Sem telefone</span>'}</span>
                       <span>${lead.email ? esc(lead.email) : '<span class="muted">Sem e-mail</span>'}</span>
                     </div>
                   </td>
-                  <td>${websiteBadge(lead.websiteStatus)}</td>
-                  <td>${scorePill(lead.effectiveScore)}</td>
-                  <td>${statusBadge(lead.status)}</td>
-                  <td class="nowrap small muted">${esc(fmtRelative(lead.updatedAt))}</td>
+                  <td class="cell-site" data-label="Site">${websiteBadge(lead.websiteStatus)}</td>
+                  <td class="cell-score" data-label="Score">${scorePill(lead.effectiveScore)}</td>
+                  <td class="cell-status" data-label="Status">${statusBadge(lead.status)}</td>
+                  <td class="cell-updated nowrap small muted" data-label="Atualizado">${esc(fmtRelative(lead.updatedAt))}</td>
                 </tr>`;
             })
             .join('')}

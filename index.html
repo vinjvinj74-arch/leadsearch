@@ -2,7 +2,7 @@
 <html lang="pt-BR" data-theme="dark">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#08090b" />
     <meta
       name="description"
@@ -215,7 +215,7 @@
             <p id="page-subtitle" class="muted">Visão geral da sua prospecção.</p>
           </div>
           <div class="topbar-actions">
-            <span class="badge" id="maps-badge" title="Estado da pesquisa de empresas">Pesquisa: verificando</span>
+            <span class="badge" id="maps-badge" data-short="Verificando" title="Estado da pesquisa de empresas">Pesquisa: verificando</span>
             <button class="btn btn-ghost btn-icon theme-toggle" type="button" aria-label="Alternar tema">
               <span class="theme-icon" aria-hidden="true"></span>
             </button>
@@ -223,6 +223,29 @@
         </header>
         <main id="main-view" class="view" tabindex="-1" aria-live="polite"></main>
       </div>
+
+      <nav class="mobile-nav" aria-label="Navegação principal">
+        <a class="nav-link mobile-nav-link" href="#/dashboard" data-route="dashboard">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 13h6V4H4v9Zm0 7h6v-5H4v5Zm10 0h6v-9h-6v9Zm0-11h6V4h-6v5Z" /></svg>
+          <span>Dashboard</span>
+        </a>
+        <a class="nav-link mobile-nav-link" href="#/search" data-route="search">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10.5 4a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13Zm0 2a4.5 4.5 0 1 1 0 9 4.5 4.5 0 0 1 0-9Zm6.2 9.6 4.1 4.1-1.4 1.4-4.1-4.1 1.4-1.4Z" /></svg>
+          <span>Prospecção</span>
+        </a>
+        <a class="nav-link mobile-nav-link" href="#/leads" data-route="leads">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v3H4V5Zm0 5.5h16v3H4v-3ZM4 16h10v3H4v-3Z" /></svg>
+          <span>Leads</span>
+        </a>
+        <a class="nav-link mobile-nav-link" href="#/settings" data-route="settings">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8.5A3.5 3.5 0 1 0 12 15.5 3.5 3.5 0 0 0 12 8.5Zm8.2 3.5c0-.5-.1-1-.2-1.5l2-1.5-2-3.4-2.4 1a8 8 0 0 0-2.6-1.5L14.6 2h-4l-.4 2.6a8 8 0 0 0-2.6 1.5l-2.4-1-2 3.4 2 1.5a8.5 8.5 0 0 0 0 3l-2 1.5 2 3.4 2.4-1a8 8 0 0 0 2.6 1.5l.4 2.6h4l.4-2.6a8 8 0 0 0 2.6-1.5l2.4 1 2-3.4-2-1.5c.1-.5.2-1 .2-1.5Z" /></svg>
+          <span>Configurações</span>
+        </a>
+        <a class="nav-link mobile-nav-link" href="#/radar" data-route="radar">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 2h2v3.06A7 7 0 0 1 18.94 11H22v2h-3.06A7 7 0 0 1 13 18.94V22h-2v-3.06A7 7 0 0 1 5.06 13H2v-2h3.06A7 7 0 0 1 11 5.06V2Zm1 5a5 5 0 1 0 0 10 5 5 0 0 0 0-10Zm0 2.5a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5Z" /></svg>
+          <span>Radar</span>
+        </a>
+      </nav>
     </div>
 
     <div id="modal-root"></div>

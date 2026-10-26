@@ -577,13 +577,16 @@ export function paintMapsBadge() {
   if (configured === true) {
     dom.mapsBadge.classList.add('badge-success');
     dom.mapsBadge.textContent = 'Pesquisa: ativa';
+    dom.mapsBadge.dataset.short = 'Ativa';
     dom.mapsBadge.title = 'Pesquisa de empresas habilitada no servidor.';
   } else if (configured === false) {
     dom.mapsBadge.classList.add('badge-warning');
     dom.mapsBadge.textContent = 'Pesquisa: pendente';
+    dom.mapsBadge.dataset.short = 'Pendente';
     dom.mapsBadge.title = 'A pesquisa de empresas não está disponível no momento.';
   } else {
     dom.mapsBadge.textContent = 'Pesquisa: verificando';
+    dom.mapsBadge.dataset.short = 'Verificando';
     dom.mapsBadge.title = 'Consultando o estado da pesquisa de empresas.';
   }
 }
