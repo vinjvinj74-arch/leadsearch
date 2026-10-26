@@ -58,7 +58,7 @@ const createSchema = z.object({
     latitude: z.number().min(-90).max(90).optional(),
     longitude: z.number().min(-180).max(180).optional(),
     country: z.preprocess(emptyToUndefined, z.string().trim().max(100).optional()),
-    countryCode: z.preprocess(emptyToUndefined, z.string().trim().length(2).optional()),
+    countryCode: z.preprocess(emptyToUndefined, z.string().trim().min(2).max(60).optional()),
   }),
   radiusKm: z.number().int().min(1).max(50).nullable().optional(),
   limit: z.number().int().min(1).max(config.maxSearchResults).default(config.maxSearchResults),

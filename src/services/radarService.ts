@@ -289,7 +289,15 @@ function buildActorInput(
     website: website === 'with' ? 'withWebsite' : website === 'without' ? 'withoutWebsite' : 'allPlaces',
   };
 
-  if (search.country_code) input.countryCode = search.country_code.toLowerCase();
+  if (search.country_code) {
+    const cc = String(search.country_code).trim().toLowerCase();
+    if (cc === 'brasil' || cc === 'brazil' || cc === 'br') {
+      input.countryCode = 'br';
+    } else if (/^[a-z]{2}$/.test(cc)) {
+      input.countryCode = cc;
+    }
+    // if not valid, omit to avoid Apify validation error
+  }
   const stars = placeMinimumStars(filters.minRating ?? null);
   if (stars) input.placeMinimumStars = stars;
 
