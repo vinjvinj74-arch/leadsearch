@@ -9,6 +9,7 @@ import { searchLimiter } from '../middleware/rateLimit.js';
 import { completeSearchWithoutEnrichment, runSearchEnrichment } from '../services/enrichmentService.js';
 import { createSearch, getSearch, listSearches } from '../services/searchService.js';
 import { ensureSettings } from '../services/settingsService.js';
+import { consumeSearchCredit, findUserById } from '../services/authService.js';
 
 export const searchesRouter = Router();
 searchesRouter.use(requireAuth);
@@ -29,6 +30,8 @@ searchesRouter.post(
   '/',
   searchLimiter,
   asyncHandler(async (req, res) => {
+    const user = await findUserById(req.user!.id);
+    if (user) await consumeSearchCredit(user.id, user.role ?? 'user');
     const body = createSchema.parse(req.body);
     const settings = await ensureSettings(req.user!.id);
     const result = await createSearch(

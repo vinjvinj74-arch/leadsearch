@@ -18,7 +18,7 @@ import {
   startSearchRun,
   waitForSearchRun,
 } from './apifyService.js';
-import { searchPlaces, type PlaceResult, type SearchParams } from './placesService.js';
+import { searchPlaces, searchPlacesFallback, type PlaceResult, type SearchParams } from './placesService.js';
 import { runSearchEnrichment } from './enrichmentService.js';
 import type { LeadRow } from './leadsService.js';
 
@@ -490,7 +490,12 @@ export async function createSearch(
   const limit = Math.min(Math.max(params.limit, 1), config.maxSearchResults);
 
   if (isApifyConfigured()) {
-    return createApifySearch(userId, params, limit, weights, allowEnrichment);
+    try {
+      return await createApifySearch(userId, params, limit, weights, allowEnrichment);
+    } catch (error) {
+      logger.warn({ err: error, userId }, 'Apify falhou, usando fallback');
+      // fall through to fallback
+    }
   }
 
   const costNote = 'A pesquisa pode consumir creditos e gerar cobranca.';
@@ -499,7 +504,11 @@ export async function createSearch(
 
   let places: PlaceResult[];
   try {
-    places = await searchPlaces({ ...params, limit });
+    try {
+      places = await searchPlaces({ ...params, limit });
+    } catch {
+      places = await searchPlacesFallback({ ...params, limit });
+    }
   } catch (error) {
     await query(
       `UPDATE searches SET status = 'failed', error_message = $3, completed_at = now()

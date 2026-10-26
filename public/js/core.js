@@ -162,6 +162,8 @@ export const state = {
   route: 'dashboard',
   themePreference: 'system',
   authToken: null,
+  subscription: null,
+  planModal: false,
   leads: {
     filters: { ...DEFAULT_FILTERS },
     page: 1,
@@ -591,6 +593,54 @@ export function paintUser() {
   dom.userName.textContent = state.user.name;
   dom.userEmail.textContent = state.user.email;
   dom.userAvatar.textContent = initials(state.user.name);
+}
+
+export function showUpgradeModal() {
+  if (document.getElementById('upgrade-modal')) return;
+  const modal = document.createElement('div');
+  modal.id = 'upgrade-modal';
+  modal.className = 'modal-backdrop';
+  modal.innerHTML = `
+    <div class="modal" role="dialog" aria-modal="true" style="max-width:520px">
+      <div class="modal-head">
+        <div>
+          <h3>Assine um plano</h3>
+          <p>Escolha o plano ideal para continuar pesquisando.</p>
+        </div>
+        <button class="btn btn-ghost btn-icon" data-action="close-upgrade">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="grid-2" style="gap:12px">
+          <div class="panel" style="margin:0">
+            <div class="panel-body">
+              <h4>Básico</h4>
+              <p class="small muted">R$ 39,90 / mês</p>
+              <p><strong>25</strong> créditos por mês</p>
+            </div>
+          </div>
+          <div class="panel" style="margin:0">
+            <div class="panel-body">
+              <h4>Ilimitado</h4>
+              <p class="small muted">R$ 97,90 / mês</p>
+              <p><strong>150</strong> créditos por mês</p>
+            </div>
+          </div>
+        </div>
+        <p class="small muted" style="margin-top:10px">Após escolher, um administrador pode ativar seu plano.</p>
+      </div>
+      <div class="modal-foot">
+        <button class="btn btn-ghost" data-action="close-upgrade">Fechar</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+  document.body.style.overflow = 'hidden';
+}
+
+export function closeUpgradeModal() {
+  const modal = document.getElementById('upgrade-modal');
+  if (modal) modal.remove();
+  document.body.style.overflow = '';
 }
 
 export function paintRoute() {

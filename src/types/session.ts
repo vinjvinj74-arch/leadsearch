@@ -4,6 +4,12 @@ export interface AuthUser {
   email: string;
   emailVerifiedAt: string | null;
   createdAt: string;
+  role?: 'user' | 'admin';
+  planId?: string | null;
+  creditsLimit?: number;
+  creditsUsed?: number;
+  creditsRemaining?: number;
+  needsUpgrade?: boolean;
 }
 
 export interface AuthSession {

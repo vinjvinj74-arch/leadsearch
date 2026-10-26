@@ -71,6 +71,21 @@ authRouter.get(
 );
 
 authRouter.post(
+  '/assign-plan',
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const { assignUserPlan, ensureUserSubscription } = await import('../services/authService.js');
+    const user = await findUserById(req.user!.id);
+    if (!user) throw unauthorized();
+    if (user.role !== 'admin') throw unauthorized('Apenas administradores podem atribuir planos.');
+    const body = z.object({ userId: z.string().uuid(), planId: z.enum(['basico', 'ilimitado']) }).parse(req.body);
+    await assignUserPlan(body.userId, body.planId);
+    const subscription = await ensureUserSubscription(body.userId);
+    res.json({ ok: true, subscription });
+  }),
+);
+
+authRouter.post(
   '/register',
   authLimiter,
   asyncHandler(async (req, res) => {
@@ -107,8 +122,10 @@ authRouter.post(
     recordAudit(req, 'register', 'user', user.id);
     logger.info({ userId: user.id }, 'Novo usuario cadastrado');
 
+    const { ensureUserSubscription } = await import('../services/authService.js');
+    const subscription = await ensureUserSubscription(user.id);
     res.status(201).json({
-      user: toAuthUser(user),
+      user: toAuthUser(user, subscription),
       settings: await ensureSettings(user.id),
       emailVerificationSent: isEmailConfigured(),
     });
@@ -160,7 +177,9 @@ authRouter.post(
     setSignedIn(req, user);
     recordAudit(req, 'login', 'user', user.id);
 
-    res.json({ user: toAuthUser(user), settings: await ensureSettings(user.id) });
+    const { ensureUserSubscription } = await import('../services/authService.js');
+    const subscription = await ensureUserSubscription(user.id);
+    res.json({ user: toAuthUser(user, subscription), settings: await ensureSettings(user.id) });
   }),
 );
 
@@ -182,12 +201,19 @@ authRouter.get(
       clearCsrfCookie(res);
       throw unauthorized('Sessao invalida.');
     }
+    const { ensureUserSubscription } = await import('../services/authService.js');
+    const subscription = await ensureUserSubscription(user.id);
     res.json({
-      user: toAuthUser(user),
+      user: toAuthUser(user, subscription),
       settings: await ensureSettings(user.id),
       integrations: {
         discoveryConfigured: isApifyConfigured() || Boolean(config.googleMapsApiKey),
         emailConfigured: isEmailConfigured(),
+      },
+      subscription: {
+        planId: subscription.plan_id,
+        creditsLimit: subscription.credits_limit,
+        creditsUsed: subscription.credits_used,
       },
     });
   }),

@@ -87,6 +87,9 @@ radarRouter.post(
   '/searches',
   searchLimiter,
   asyncHandler(async (req, res) => {
+    const { consumeSearchCredit, findUserById } = await import('../services/authService.js');
+    const user = await findUserById(req.user!.id);
+    if (user) await consumeSearchCredit(user.id, user.role ?? 'user');
     const body = createSchema.parse(req.body);
     const input: RadarCreateInput = {
       name: body.name,

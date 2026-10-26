@@ -315,6 +315,11 @@ export async function handleSearchSubmit(form) {
   }
   setFormBusy(form, true, 'Pesquisando...');
   try {
+    if (state.user?.needsUpgrade || (state.user?.creditsRemaining !== undefined && state.user.creditsRemaining <= 0 && state.user.role !== 'admin')) {
+      const { showUpgradeModal } = await import('./core.js');
+      showUpgradeModal();
+      return;
+    }
     const response = await api('/api/searches', {
       method: 'POST',
       body: {
@@ -326,6 +331,11 @@ export async function handleSearchSubmit(form) {
         limit: Number(data.limit),
       },
     });
+    if (state.user) {
+      state.user.creditsUsed = (state.user.creditsUsed || 0) + 1;
+      state.user.creditsRemaining = Math.max(0, (state.user.creditsRemaining ?? 0) - 1);
+      if (state.user.creditsRemaining <= 0 && state.user.role !== 'admin') state.user.needsUpgrade = true;
+    }
     state.activeSearch = response.search;
     state.activeStats = response.async ? null : response.stats;
     updateSearchStatusPanel();

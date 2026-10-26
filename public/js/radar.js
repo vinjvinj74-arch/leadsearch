@@ -2023,10 +2023,22 @@ export async function handleRadarAction(element) {
       danger: true,
       onConfirm: async (button) => {
         setButtonBusy(button, true, 'Cancelando...');
-        try {
-          const data = await api(`/api/radar/searches/${encodeURIComponent(radar.search.id)}/cancel`, {
-            method: 'POST',
-          });
+  try {
+    if (state.user?.needsUpgrade || (state.user?.creditsRemaining !== undefined && state.user.creditsRemaining <= 0 && state.user.role !== 'admin')) {
+      const { showUpgradeModal } = await import('./core.js');
+      showUpgradeModal();
+      setFormBusy(form, false);
+      return;
+    }
+    const response = await api('/api/radar/searches', {
+      method: 'POST',
+      body: payload,
+    });
+    if (state.user) {
+      state.user.creditsUsed = (state.user.creditsUsed || 0) + 1;
+      state.user.creditsRemaining = Math.max(0, (state.user.creditsRemaining ?? 0) - 1);
+      if (state.user.creditsRemaining <= 0 && state.user.role !== 'admin') state.user.needsUpgrade = true;
+    }
           radar.search = data.search;
           closeModal();
           stopRadarPolling();

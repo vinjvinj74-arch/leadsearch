@@ -169,6 +169,13 @@ document.addEventListener('click', (event) => {
     return;
   }
 
+  if (target.closest('[data-action="close-upgrade"]')) {
+    const modal = document.getElementById('upgrade-modal');
+    if (modal) modal.remove();
+    document.body.style.overflow = '';
+    return;
+  }
+
   const authAction = target.closest('[data-auth-tab], [data-auth-link]');
   if (authAction) {
     if (handleAuthAction(authAction)) {

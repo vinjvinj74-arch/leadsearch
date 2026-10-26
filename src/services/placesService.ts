@@ -208,3 +208,37 @@ export async function testGooglePlaces(): Promise<{ ok: boolean; latencyMs: numb
     resultCount: payload.places?.length ?? 0,
   };
 }
+
+export async function searchPlacesFallback(params: SearchParams): Promise<PlaceResult[]> {
+  try {
+    const queryParts = [params.niche, 'em', params.city, params.state, params.country].filter(Boolean);
+    const q = queryParts.join(' ');
+    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&addressdetails=1&limit=${Math.min(Math.max(params.limit, 1), config.maxSearchResults)}&accept-language=pt-BR`;
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'LeadSearch/1.0 (contact@leadsearch.local)',
+      },
+      signal: AbortSignal.timeout(15000),
+    });
+    if (!response.ok) throw upstreamError('Nao foi possivel concluir a pesquisa.');
+    const data = (await response.json()) as Array<any>;
+    return data.map((item, idx) => ({
+      placeId: item.place_id ? String(item.place_id) : `osm-${idx}`,
+      name: item.display_name?.split(',')[0] || params.niche,
+      address: item.display_name || null,
+      phone: null,
+      website: null,
+      segment: params.niche,
+      rating: null,
+      reviewsCount: null,
+      businessStatus: null,
+      googleMapsUrl: null,
+      latitude: item.lat ? Number(item.lat) : null,
+      longitude: item.lon ? Number(item.lon) : null,
+      sourceMetadata: { source: 'osm_nominatim' },
+    }));
+  } catch (error) {
+    if (error instanceof AppError) throw error;
+    throw upstreamError('Nao foi possivel concluir a pesquisa.');
+  }
+}
