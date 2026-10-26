@@ -3560,6 +3560,10 @@ textarea.input {
     overflow: visible;
   }
 
+  .data-table {
+    display: block;
+  }
+
   .data-table thead {
     display: block;
     border-bottom: 1px solid var(--border);
