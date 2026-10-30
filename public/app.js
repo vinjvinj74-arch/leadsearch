@@ -1,5 +1,8 @@
 import {
+  BRAND,
+  LEGACY_THEME_KEY,
   ROUTES,
+  THEME_KEY,
   api,
   applyTheme,
   closeModal,
@@ -96,7 +99,7 @@ async function renderRoute() {
 
   dom.pageTitle.textContent = ROUTES[name].title;
   dom.pageSubtitle.textContent = ROUTES[name].subtitle;
-  document.title = `${ROUTES[name].title} · LeadSearch`;
+  document.title = `${ROUTES[name].title} · ${BRAND}`;
   document.querySelectorAll('.nav-link[data-route]').forEach((link) => {
     const active = link.dataset.route === name;
     link.classList.toggle('is-active', active);
@@ -321,7 +324,8 @@ window.addEventListener('settings:rerender', () => {
 });
 
 async function boot() {
-  const storedTheme = localStorage.getItem('leadsearch-theme') || 'system';
+  const legacyTheme = localStorage.getItem(LEGACY_THEME_KEY);
+  const storedTheme = localStorage.getItem(THEME_KEY) || legacyTheme || 'system';
   applyTheme(storedTheme);
 
   const media = window.matchMedia('(prefers-color-scheme: light)');

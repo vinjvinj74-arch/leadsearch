@@ -14,6 +14,7 @@ import {
   setFormBusy,
   showFormError,
   state,
+  syncCredits,
   toast,
   clearFormMessages,
 } from './core.js';
@@ -315,7 +316,7 @@ export async function handleSearchSubmit(form) {
   }
   setFormBusy(form, true, 'Pesquisando...');
   try {
-    if (state.user?.needsUpgrade || (state.user?.creditsRemaining !== undefined && state.user.creditsRemaining <= 0 && state.user.role !== 'admin')) {
+    if (!state.user?.canSearch && !state.user?.unlimited) {
       const { showUpgradeModal } = await import('./core.js');
       showUpgradeModal();
       return;
@@ -331,11 +332,7 @@ export async function handleSearchSubmit(form) {
         limit: Number(data.limit),
       },
     });
-    if (state.user) {
-      state.user.creditsUsed = (state.user.creditsUsed || 0) + 1;
-      state.user.creditsRemaining = Math.max(0, (state.user.creditsRemaining ?? 0) - 1);
-      if (state.user.creditsRemaining <= 0 && state.user.role !== 'admin') state.user.needsUpgrade = true;
-    }
+    syncCredits(response.credits);
     state.activeSearch = response.search;
     state.activeStats = response.async ? null : response.stats;
     updateSearchStatusPanel();

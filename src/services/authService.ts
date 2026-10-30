@@ -7,6 +7,12 @@ import type { AuthUser } from '../types/session.js';
 import { clearCsrfCookie, clearSessionCookie, setCsrfCookie, setSessionCookie } from '../lib/cookies.js';
 import { hashIp, requestIp } from '../lib/http.js';
 import { unauthorized } from '../lib/errors.js';
+import { normalizeRole, type UserRole } from '../plans.js';
+import {
+  entitlementsFromRow,
+  loadSubscription,
+  type SubscriptionRow,
+} from './subscriptionService.js';
 
 export interface UserRow {
   id: string;
@@ -17,7 +23,7 @@ export interface UserRow {
   failed_login_attempts: number;
   locked_until: Date | null;
   created_at: Date;
-  role?: 'user' | 'admin';
+  role?: UserRole | 'admin' | null;
 }
 
 export interface UserSubscriptionRow {
@@ -26,41 +32,50 @@ export interface UserSubscriptionRow {
   credits_used: number;
   credits_reset_at: Date | null;
   status: string;
+  current_period_end?: Date | null;
+  cancel_at_period_end?: boolean;
+  provider?: string | null;
 }
 
 export function toAuthUser(
   row: UserRow,
-  subscription?: UserSubscriptionRow | null,
+  subscription?: SubscriptionRow | UserSubscriptionRow | null,
 ): AuthUser {
-  const creditsLimit = subscription?.credits_limit ?? 0;
-  const creditsUsed = subscription?.credits_used ?? 0;
-  const creditsRemaining = Math.max(0, creditsLimit - creditsUsed);
-  const role = (row as any).role ?? 'user';
-  const needsUpgrade = role === 'admin' ? false : !subscription?.plan_id || creditsLimit === 0 || creditsRemaining <= 0;
+  const role = normalizeRole(row.role ?? 'user');
+  const entitlements = entitlementsFromRow(
+    row.id,
+    role,
+    subscription as SubscriptionRow | null | undefined,
+  );
   return {
     id: row.id,
     name: row.name,
     email: row.email,
     emailVerifiedAt: row.email_verified_at ? row.email_verified_at.toISOString() : null,
     createdAt: row.created_at.toISOString(),
-    role,
-    planId: subscription?.plan_id ?? null,
-    creditsLimit,
-    creditsUsed,
-    creditsRemaining,
-    needsUpgrade,
+    role: entitlements.role,
+    isSuperAdmin: entitlements.isSuperAdmin,
+    planId: entitlements.planId,
+    planName: entitlements.planName,
+    planStatus: entitlements.status,
+    creditsLimit: entitlements.creditsLimit,
+    creditsUsed: entitlements.creditsUsed,
+    creditsRemaining: entitlements.creditsRemaining,
+    canSearch: entitlements.canSearch,
+    active: entitlements.active,
+    unlimited: entitlements.unlimited,
+    accessReason: entitlements.reason,
+    renewsAt: entitlements.renewsAt,
+    provider: entitlements.provider,
+    providerCustomerId: entitlements.providerCustomerId,
+    creditUnit: entitlements.creditUnit,
+    needsUpgrade: !entitlements.canSearch,
   };
 }
 
 export async function getUserSubscription(userId: string): Promise<UserSubscriptionRow | null> {
-  const result = await query<UserSubscriptionRow>(
-    `SELECT plan_id, credits_limit, credits_used, credits_reset_at, status
-     FROM user_subscriptions
-     WHERE user_id = $1
-     LIMIT 1`,
-    [userId],
-  );
-  return result.rows[0] ?? null;
+  const row = await loadSubscription(userId);
+  return row;
 }
 
 export function hashToken(token: string): string {
@@ -139,80 +154,26 @@ export async function findUserById(id: string): Promise<UserRow | null> {
   return result.rows[0] ?? null;
 }
 
-export async function ensureUserSubscription(userId: string): Promise<UserSubscriptionRow> {
+/**
+ * Garante apenas a existencia do registro de assinatura.
+ * A renovacao de creditos e feita exclusivamente por webhooks oficiais ou
+ * pela rotina de assinaturas manuais, nunca pela leitura do perfil.
+ */
+export async function ensureUserSubscription(userId: string): Promise<UserSubscriptionRow | null> {
+  const existing = await getUserSubscription(userId);
+  if (existing) return existing;
+
   try {
-    const existing = await getUserSubscription(userId);
-    if (existing) {
-      const now = new Date();
-      if (existing.credits_reset_at && existing.credits_reset_at <= now) {
-        try {
-          const reset = await query<UserSubscriptionRow>(
-            `UPDATE user_subscriptions
-             SET credits_used = 0,
-                 credits_reset_at = date_trunc('month', now()) + interval '1 month',
-                 updated_at = now()
-             WHERE user_id = $1
-             RETURNING plan_id, credits_limit, credits_used, credits_reset_at, status`,
-            [userId],
-          );
-          return reset.rows[0] ?? existing;
-        } catch {
-          return existing;
-        }
-      }
-      return existing;
-    }
-
-    try {
-      const created = await query<UserSubscriptionRow>(
-        `INSERT INTO user_subscriptions (user_id, plan_id, status, credits_limit, credits_used, credits_reset_at)
-         VALUES ($1, NULL, 'active', 0, 0, date_trunc('month', now()) + interval '1 month')
-         ON CONFLICT (user_id) DO UPDATE SET updated_at = now()
-         RETURNING plan_id, credits_limit, credits_used, credits_reset_at, status`,
-        [userId],
-      );
-      return created.rows[0] ?? { plan_id: null, credits_limit: 0, credits_used: 0, credits_reset_at: null, status: 'active' };
-    } catch {
-      return { plan_id: null, credits_limit: 0, credits_used: 0, credits_reset_at: null, status: 'active' };
-    }
-  } catch {
-    return { plan_id: null, credits_limit: 0, credits_used: 0, credits_reset_at: null, status: 'active' };
-  }
-}
-
-export async function assignUserPlan(userId: string, planId: 'basico' | 'ilimitado'): Promise<void> {
-  const plan = await query<{ monthly_credits: number }>('SELECT monthly_credits FROM plans WHERE id = $1', [planId]);
-  const limit = plan.rows[0]?.monthly_credits ?? (planId === 'ilimitado' ? 150 : 25);
-  await query(
-    `INSERT INTO user_subscriptions (user_id, plan_id, status, credits_limit, credits_used, credits_reset_at)
-     VALUES ($1, $2, 'active', $3, 0, date_trunc('month', now()) + interval '1 month')
-     ON CONFLICT (user_id) DO UPDATE SET
-       plan_id = EXCLUDED.plan_id,
-       status = 'active',
-       credits_limit = EXCLUDED.credits_limit,
-       credits_used = 0,
-       credits_reset_at = date_trunc('month', now()) + interval '1 month',
-       updated_at = now()`,
-    [userId, planId, limit],
-  );
-}
-
-export async function consumeSearchCredit(userId: string, role: string): Promise<void> {
-  if (role === 'admin') return;
-  try {
-    const sub = await ensureUserSubscription(userId);
-    if (!sub.plan_id) throw unauthorized('Plano necessario para realizar pesquisas.');
-    if (sub.credits_limit === 0) throw unauthorized('Plano necessario para realizar pesquisas.');
-    if (sub.credits_used >= sub.credits_limit) throw unauthorized('Creditos esgotados. Assine um plano para continuar.');
-    await query(
-      'UPDATE user_subscriptions SET credits_used = credits_used + 1, updated_at = now() WHERE user_id = $1',
+    const created = await query<UserSubscriptionRow>(
+      `INSERT INTO user_subscriptions (user_id, plan_id, status, credits_limit, credits_used, credits_reset_at)
+       VALUES ($1, NULL, 'pending', 0, 0, NULL)
+       ON CONFLICT (user_id) DO UPDATE SET updated_at = now()
+       RETURNING plan_id, credits_limit, credits_used, credits_reset_at, status`,
       [userId],
     );
-  } catch (error: any) {
-    if (error?.code === '42P01') {
-      throw unauthorized('Plano necessario para realizar pesquisas.');
-    }
-    throw error;
+    return created.rows[0] ?? null;
+  } catch {
+    return null;
   }
 }
 

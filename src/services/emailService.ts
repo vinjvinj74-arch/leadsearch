@@ -87,9 +87,9 @@ export async function sendVerificationEmail(email: string, name: string, token: 
   const safeLink = escapeHtml(link);
   await send(
     email,
-    'Confirme seu e-mail no LeadSearch',
+    'Confirme seu e-mail no RADAR',
     `Ola, ${name}.\n\nConfirme seu e-mail acessando: ${link}\n\nO link expira em 24 horas.`,
-    `<p>Ola, ${safeName}.</p><p>Confirme seu e-mail no LeadSearch:</p><p><a href="${safeLink}">Confirmar e-mail</a></p><p>O link expira em 24 horas.</p>`,
+    `<p>Ola, ${safeName}.</p><p>Confirme seu e-mail no RADAR:</p><p><a href="${safeLink}">Confirmar e-mail</a></p><p>O link expira em 24 horas.</p>`,
   );
 }
 
@@ -99,9 +99,9 @@ export async function sendPasswordResetEmail(email: string, name: string, token:
   const safeLink = escapeHtml(link);
   await send(
     email,
-    'Redefinicao de senha - LeadSearch',
+    'Redefinicao de senha - RADAR',
     `Ola, ${name}.\n\nRedefina sua senha acessando: ${link}\n\nO link expira em 1 hora. Se voce nao solicitou, ignore esta mensagem.`,
-    `<p>Ola, ${safeName}.</p><p>Redefina sua senha no LeadSearch:</p><p><a href="${safeLink}">Redefinir senha</a></p><p>O link expira em 1 hora. Se voce nao solicitou, ignore esta mensagem.</p>`,
+    `<p>Ola, ${safeName}.</p><p>Redefina sua senha no RADAR:</p><p><a href="${safeLink}">Redefinir senha</a></p><p>O link expira em 1 hora. Se voce nao solicitou, ignore esta mensagem.</p>`,
   );
 }
 

@@ -1,9 +1,16 @@
 import { Router } from 'express';
+import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { config, LEAD_STATUSES, WEBSITE_STATUSES } from '../config.js';
 import { recordAudit } from '../lib/audit.js';
 import { asyncHandler } from '../lib/http.js';
+import { logger } from '../lib/logger.js';
 import { requireAuth } from '../middleware/auth.js';
+import {
+  loadEntitlements,
+  requireSearchAccess,
+  requireToolAccess,
+} from '../middleware/entitlements.js';
 import { exportLimiter, geocodeLimiter, searchLimiter } from '../middleware/rateLimit.js';
 import { searchLocations } from '../services/geocodingService.js';
 import {
@@ -17,9 +24,10 @@ import {
   type RadarCreateInput,
   type RadarFilters,
 } from '../services/radarService.js';
+import { consumeCredits, refundCreditByReference } from '../services/subscriptionService.js';
 
 export const radarRouter = Router();
-radarRouter.use(requireAuth);
+radarRouter.use(requireAuth, loadEntitlements);
 
 const emptyToUndefined = (value: unknown) => (value === '' || value === null ? undefined : value);
 
@@ -73,6 +81,7 @@ const patchSchema = z.object({
 radarRouter.get(
   '/locations',
   geocodeLimiter,
+  requireToolAccess,
   asyncHandler(async (req, res) => {
     const query = z.string().trim().min(3).max(240).parse(req.query.q);
     const country = z
@@ -86,10 +95,8 @@ radarRouter.get(
 radarRouter.post(
   '/searches',
   searchLimiter,
+  requireSearchAccess,
   asyncHandler(async (req, res) => {
-    const { consumeSearchCredit, findUserById } = await import('../services/authService.js');
-    const user = await findUserById(req.user!.id);
-    if (user) await consumeSearchCredit(user.id, user.role ?? 'user');
     const body = createSchema.parse(req.body);
     const input: RadarCreateInput = {
       name: body.name,
@@ -98,13 +105,37 @@ radarRouter.post(
       limit: body.limit,
       filters: body.filters as RadarFilters,
     };
-    const search = await createRadarSearch(req.user!.id, input);
+    const reference = `radar:${randomUUID()}`;
+    const credit = await consumeCredits(req.user!.id, req.user!.role, {
+      reference,
+      description: 'Pesquisa executada no Radar.',
+    });
+
+    let search;
+    try {
+      search = await createRadarSearch(req.user!.id, input, reference);
+    } catch (error) {
+      await refundCreditByReference(
+        req.user!.id,
+        reference,
+        'Pesquisa do Radar não iniciada: crédito devolvido.',
+      ).catch((refundError) => {
+        logger.error({ err: refundError, userId: req.user!.id }, 'Falha ao devolver credito do Radar');
+      });
+      throw error;
+    }
+
     recordAudit(req, 'radar_search_created', 'radar_search', search.id, {
       name: search.name,
       location: search.location.label,
       limit: search.resultLimit,
+      creditsCharged: credit.charged ? 1 : 0,
+      creditsRemaining: credit.balanceAfter,
     });
-    res.status(201).json({ search });
+    res.status(201).json({
+      search,
+      credits: { charged: credit.charged, remaining: credit.balanceAfter },
+    });
   }),
 );
 
@@ -127,6 +158,7 @@ radarRouter.get(
 
 radarRouter.patch(
   '/searches/:id',
+  requireToolAccess,
   asyncHandler(async (req, res) => {
     const id = z.string().uuid().parse(req.params.id);
     const body = patchSchema.parse(req.body);
@@ -156,6 +188,7 @@ const saveResultsSchema = z.object({
 
 radarRouter.post(
   '/searches/:id/save-results',
+  requireToolAccess,
   asyncHandler(async (req, res) => {
     const id = z.string().uuid().parse(req.params.id);
     const body = saveResultsSchema.parse(req.body);
@@ -181,6 +214,7 @@ const exportQuerySchema = z.object({
 radarRouter.get(
   '/searches/:id/export.csv',
   exportLimiter,
+  requireToolAccess,
   asyncHandler(async (req, res) => {
     const id = z.string().uuid().parse(req.params.id);
     const parsed = exportQuerySchema.parse(req.query);
@@ -189,7 +223,7 @@ radarRouter.get(
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader(
       'Content-Disposition',
-      `attachment; filename="leadsearch-radar-${new Date().toISOString().slice(0, 10)}.csv"`,
+      `attachment; filename="radar-resultados-${new Date().toISOString().slice(0, 10)}.csv"`,
     );
     res.send(csv);
   }),

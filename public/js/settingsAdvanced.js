@@ -94,6 +94,115 @@ export function securityTabMarkup() {
     </div>`;
 }
 
+export function privacyTabMarkup() {
+  const legal = state.settingsCache.legal;
+  if (legal === null) {
+    return `
+      <div class="settings-panel">
+        <section class="settings-section">
+          <div class="skeleton skeleton-line"></div>
+          <div class="skeleton skeleton-line"></div>
+          <div class="skeleton skeleton-line" style="width:65%"></div>
+        </section>
+      </div>`;
+  }
+  if (legal.error) {
+    return `
+      <div class="settings-panel">
+        <section class="settings-section">
+          <div class="notice notice-danger"><span>${esc(legal.error)}</span></div>
+          <button class="btn" type="button" data-action="settings-refresh-legal">Tentar novamente</button>
+        </section>
+      </div>`;
+  }
+
+  const accepted = legal.accepted ?? [];
+  const documents = legal.documents ?? [];
+  const rows = documents
+    .map((document) => {
+      const record = accepted.find((entry) => entry.document === document.id);
+      const status = record
+        ? `<span class="badge badge-success">Aceito em ${esc(fmtDate(record.acceptedAt, true))}</span>`
+        : document.requiredOnRegistration
+          ? '<span class="badge badge-warning">Sem registro</span>'
+          : '<span class="badge">Consulta</span>';
+      return `
+        <div class="integration-card">
+          <div>
+            <h4>${esc(document.title)} ${status}</h4>
+            <p>Versão ${esc(document.version)} · <a href="${esc(document.route)}" target="_blank" rel="noopener noreferrer">Abrir documento</a></p>
+          </div>
+        </div>`;
+    })
+    .join('');
+
+  return `
+    <div class="settings-panel">
+      <section class="settings-section">
+        <div class="row-between" style="margin-bottom:12px">
+          <div>
+            <h3>Privacidade e LGPD</h3>
+            <p style="margin:2px 0 0">Versão vigente: ${esc(legal.version ?? '—')}. Controlador: ${esc(legal.controller ?? 'RADAR')}.</p>
+          </div>
+          <button class="btn btn-ghost btn-sm" type="button" data-action="settings-refresh-legal">Atualizar</button>
+        </div>
+        <div class="stack" style="gap:10px">${rows}</div>
+        <p class="small muted" style="margin-top:12px">
+          O aceite é solicitado no cadastro. Usuários existentes mantêm o acesso e podem consultar os registros abaixo.
+        </p>
+      </section>
+
+      <section class="settings-section">
+        <h3>Consentimentos registrados</h3>
+        ${
+          accepted.length
+            ? `<div class="session-list">${accepted
+                .map(
+                  (entry) => `
+                  <div class="session-item">
+                    <div>
+                      <strong>${esc(entry.document)}</strong>
+                      <small>Versão ${esc(entry.version)} · ${esc(fmtDate(entry.acceptedAt, true))}</small>
+                    </div>
+                  </div>`,
+                )
+                .join('')}</div>`
+            : '<p class="small muted">Nenhum consentimento registrado para esta conta.</p>'
+        }
+      </section>
+
+      <section class="settings-section">
+        <h3>Seus dados</h3>
+        <p>Baixe uma cópia dos seus dados, incluindo consentimentos, leads, atividades e configurações.</p>
+        <a class="btn" href="/api/account/export">Baixar dados (JSON)</a>
+      </section>
+
+      <section class="settings-section">
+        <h3>Contato de privacidade</h3>
+        <p>
+          Solicitações de acesso, correção, portabilidade, oposição ou eliminação podem ser enviadas para
+          <a href="mailto:${esc(legal.contact ?? 'vinjvinj74@gmail.com')}">${esc(legal.contact ?? 'vinjvinj74@gmail.com')}</a>.
+        </p>
+        <p class="small muted">
+          Consulte também a <a href="/lgpd" target="_blank" rel="noopener noreferrer">página de direitos LGPD</a> e a
+          <a href="/politicas/seguranca" target="_blank" rel="noopener noreferrer">política de segurança</a>.
+        </p>
+      </section>
+    </div>`;
+}
+
+export async function loadPrivacyTabData(rerender) {
+  state.settingsCache.legal = null;
+  rerender();
+  try {
+    state.settingsCache.legal = await api('/api/legal/status');
+  } catch (error) {
+    state.settingsCache.legal = { error: errorMessage(error) };
+    toast(errorMessage(error), 'error');
+  }
+  rerender();
+}
+
 function integrationCard({ title, configured, label, note, action = '' }) {
   const badge = configured
     ? '<span class="badge badge-success">Configurado</span>'
@@ -141,7 +250,7 @@ function diagnosticsMarkup() {
         : `${Math.floor(uptime / 60)}min`;
   return `
     <dl class="kv small">
-      <dt>Aplicação</dt><dd>${esc(app.name ?? 'LeadSearch')} ${esc(app.version ?? '')} · ${esc(app.environment ?? '—')}</dd>
+      <dt>Aplicação</dt><dd>${esc(app.name ?? 'RADAR')} ${esc(app.version ?? '')} · ${esc(app.environment ?? '—')}</dd>
       <dt>Node.js</dt><dd>${esc(app.node ?? '—')} · ativa há ${esc(uptimeText)}</dd>
       <dt>Banco de dados</dt><dd>${db.ok ? `<span class="badge badge-success">Online</span> ${fmtNumber(db.latencyMs)} ms` : `<span class="badge badge-danger">Indisponível</span>${db.error ? ` · ${esc(db.error)}` : ''}`}</dd>
       <dt>Migração</dt><dd>${esc(db.migrationVersion ?? '—')}${db.migrationAppliedAt ? ` · ${esc(fmtDate(db.migrationAppliedAt, true))}` : ''}</dd>
@@ -277,6 +386,11 @@ export async function handleAdvancedSettingsAction(element, rerender) {
 
   if (action === 'settings-refresh-diagnostics') {
     void loadIntegrationsTabData(rerender);
+    return true;
+  }
+
+  if (action === 'settings-refresh-legal') {
+    void loadPrivacyTabData(rerender);
     return true;
   }
 

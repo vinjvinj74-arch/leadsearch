@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#08090b" />
+    <meta name="description" content="Fale com o RADAR: suporte, privacidade, exclusão de dados e assuntos comerciais." />
+    <title>Contato · RADAR</title>
+    <link rel="icon" href="/logo.png" type="image/png" />
+    <link rel="stylesheet" href="/legal.css" />
+  </head>
+  <body>
+    <header class="legal-header">
+      <a class="legal-brand" href="/"><img src="/logo.png" alt="RADAR" /><span>RADAR</span></a>
+      <nav class="legal-nav" aria-label="Documentos legais">
+        <a href="/termos">Termos</a>
+        <a href="/privacidade">Privacidade</a>
+        <a href="/lgpd">LGPD</a>
+        <a href="/contact" aria-current="page">Contato</a>
+        <a href="/politicas">Políticas</a>
+      </nav>
+    </header>
+
+    <main class="legal-main">
+      <p class="eyebrow">Atendimento · Versão 2026-10-30</p>
+      <h1>Fale com o RADAR</h1>
+      <p class="meta">
+        Atendimento pelo e-mail <a href="mailto:vinjvinj74@gmail.com">vinjvinj74@gmail.com</a>. Respondemos em até
+        5 (cinco) dias úteis.
+      </p>
+
+      <div class="card notice">
+        <p>
+          Use este formulário para suporte, dúvidas comerciais, solicitações de privacidade, exclusão de dados ou
+          relatos de segurança. Solicitações de exclusão também podem ser feitas pela página
+          <a href="/data-deletion">Exclusão de dados</a>.
+        </p>
+      </div>
+
+      <form id="contact-form" class="contact-form" novalidate>
+        <label>
+          <span>Assunto</span>
+          <select name="kind" required>
+            <option value="support">Suporte</option>
+            <option value="commercial">Comercial / planos</option>
+            <option value="privacy">Privacidade</option>
+            <option value="data_deletion">Exclusão de dados</option>
+            <option value="security">Segurança</option>
+          </select>
+        </label>
+
+        <label>
+          <span>Nome</span>
+          <input name="name" type="text" autocomplete="name" minlength="2" maxlength="120" required />
+        </label>
+
+        <label>
+          <span>E-mail</span>
+          <input name="email" type="email" autocomplete="email" maxlength="254" required />
+        </label>
+
+        <label>
+          <span>Mensagem</span>
+          <textarea
+            name="message"
+            rows="7"
+            minlength="10"
+            maxlength="4000"
+            required
+            placeholder="Descreva sua solicitação com o máximo de detalhes possível."
+          ></textarea>
+        </label>
+
+        <label class="contact-check">
+          <input name="acceptPrivacy" type="checkbox" required />
+          <span>
+            Li e aceito a <a href="/privacidade">Política de Privacidade</a> e o tratamento dos dados informados
+            para atendimento desta solicitação.
+          </span>
+        </label>
+
+        <button type="submit" class="contact-submit">Enviar solicitação</button>
+        <p id="contact-feedback" class="contact-feedback" role="status" aria-live="polite"></p>
+      </form>
+    </main>
+
+    <footer class="legal-footer">
+      <nav aria-label="Links legais">
+        <a href="/termos">Termos</a>
+        <a href="/privacidade">Privacidade</a>
+        <a href="/cookies">Cookies</a>
+        <a href="/acceptable-use">Uso aceitável</a>
+        <a href="/refund-policy">Reembolso</a>
+        <a href="/data-deletion">Exclusão de dados</a>
+      </nav>
+      <p>© 2026 RADAR. Todos os direitos reservados.</p>
+    </footer>
+
+    <script src="/js/contact.js" defer></script>
+  </body>
+</html>

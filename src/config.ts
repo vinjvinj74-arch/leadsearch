@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import { ADMIN_EMAIL } from './plans.js';
 
 function bool(value: string | undefined, fallback = false): boolean {
   if (value === undefined || value === '') return fallback;
@@ -12,27 +13,47 @@ function int(value: string | undefined, fallback: number): number {
 
 const env = process.env.NODE_ENV ?? 'development';
 const sessionSecret = process.env.SESSION_SECRET ?? '';
+const sessionTtlDays = Math.max(int(process.env.SESSION_TTL_DAYS, 30), 1);
+const sessionIdleDays = Math.min(Math.max(int(process.env.SESSION_IDLE_DAYS, 7), 1), sessionTtlDays);
 
 if (env === 'production' && sessionSecret.length < 32) {
   throw new Error('SESSION_SECRET deve ter no minimo 32 caracteres em producao.');
 }
 
 export const config = {
+  appName: 'RADAR',
   env,
   isProduction: env === 'production',
   port: int(process.env.PORT, 3000),
   databaseUrl: process.env.DATABASE_URL ?? '',
   pgSsl: bool(process.env.PGSSL, false),
   sessionSecret: sessionSecret || 'desenvolvimento-apenas-nao-use-este-segredo-em-producao',
-  sessionTtlDays: int(process.env.SESSION_TTL_DAYS, 30),
+  sessionTtlDays,
+  sessionIdleDays,
   cookieSecure: bool(process.env.COOKIE_SECURE, env === 'production'),
   appOrigins: (process.env.APP_ORIGINS ?? '')
     .split(',')
     .map((origin) => origin.trim().replace(/\/$/, ''))
     .filter(Boolean),
   appUrl: (process.env.APP_URL ?? '').replace(/\/$/, ''),
+  adminEmail: ADMIN_EMAIL,
   googleMapsApiKey: process.env.GOOGLE_MAPS_API_KEY ?? '',
   apifyApiToken: process.env.APIFY_API_TOKEN ?? '',
+  billing: {
+    provider: 'stripe' as const,
+    stripeSecretKey: process.env.STRIPE_SECRET_KEY ?? '',
+    stripeWebhookSecret: process.env.STRIPE_WEBHOOK_SECRET ?? '',
+    prices: {
+      starter: process.env.STRIPE_PRICE_STARTER ?? '',
+      pro: process.env.STRIPE_PRICE_PRO ?? '',
+      business: process.env.STRIPE_PRICE_BUSINESS ?? '',
+    },
+    portalReturnPath: process.env.STRIPE_PORTAL_RETURN_PATH ?? '/sales',
+    webhookToleranceSeconds: Math.min(
+      Math.max(int(process.env.STRIPE_WEBHOOK_TOLERANCE_SECONDS, 300), 60),
+      900,
+    ),
+  },
   apify: {
     actor: 'compass~crawler-google-places',
     timeoutSeconds: 300,
@@ -46,7 +67,7 @@ export const config = {
     secure: bool(process.env.SMTP_SECURE, false),
     user: process.env.SMTP_USER ?? '',
     pass: process.env.SMTP_PASS ?? '',
-    from: process.env.SMTP_FROM ?? 'LeadSearch <no-reply@leadsearch.local>',
+    from: process.env.SMTP_FROM ?? 'RADAR <no-reply@radar.local>',
   },
   maxSearchResults: Math.min(Math.max(int(process.env.MAX_SEARCH_RESULTS, 5), 1), 5),
   exportMaxRows: Math.min(Math.max(int(process.env.EXPORT_MAX_ROWS, 5000), 1), 20000),

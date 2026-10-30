@@ -6,8 +6,9 @@ import { recordAudit } from '../lib/audit.js';
 import { clearCsrfCookie, clearSessionCookie, setCsrfCookie } from '../lib/cookies.js';
 import { AppError, badRequest, conflict, unauthorized } from '../lib/errors.js';
 import { asyncHandler } from '../lib/http.js';
+import { LEGAL_VERSION, REQUIRED_REGISTRATION_DOCUMENTS } from '../legal/versions.js';
 import { requireAuth } from '../middleware/auth.js';
-import { authLimiter } from '../middleware/rateLimit.js';
+import { authLimiter, forgotPasswordLimiter, registerLimiter } from '../middleware/rateLimit.js';
 import { isApifyConfigured } from '../services/apifyService.js';
 import {
   createSession,
@@ -30,6 +31,7 @@ import {
   trySendVerificationEmail,
 } from '../services/emailService.js';
 import { ensureSettings } from '../services/settingsService.js';
+import { getEntitlements, loadSubscription } from '../services/subscriptionService.js';
 import { logger } from '../lib/logger.js';
 
 export const authRouter = Router();
@@ -71,26 +73,19 @@ authRouter.get(
 );
 
 authRouter.post(
-  '/assign-plan',
-  requireAuth,
-  asyncHandler(async (req, res) => {
-    const { assignUserPlan, ensureUserSubscription } = await import('../services/authService.js');
-    const user = await findUserById(req.user!.id);
-    if (!user) throw unauthorized();
-    if (user.role !== 'admin') throw unauthorized('Apenas administradores podem atribuir planos.');
-    const body = z.object({ userId: z.string().uuid(), planId: z.enum(['basico', 'ilimitado']) }).parse(req.body);
-    await assignUserPlan(body.userId, body.planId);
-    const subscription = await ensureUserSubscription(body.userId);
-    res.json({ ok: true, subscription });
-  }),
-);
-
-authRouter.post(
   '/register',
-  authLimiter,
+  registerLimiter,
   asyncHandler(async (req, res) => {
     const body = registerSchema.parse(req.body);
+    if (req.body?.acceptLegal !== true) {
+      throw new AppError(
+        400,
+        'CONSENT_REQUIRED',
+        'E necessario aceitar os Termos de Uso, a Politica de Privacidade e declarar ciencia dos direitos LGPD.',
+      );
+    }
     const passwordHash = await hashPassword(body.password);
+    const userAgent = (req.get('user-agent') ?? '').slice(0, 500);
     let user: UserRow;
 
     try {
@@ -104,6 +99,14 @@ authRouter.post(
         const created = inserted.rows[0];
         if (!created) throw new Error('Falha ao criar usuario.');
         await client.query('INSERT INTO user_settings (user_id) VALUES ($1)', [created.id]);
+        for (const document of REQUIRED_REGISTRATION_DOCUMENTS) {
+          await client.query(
+            `INSERT INTO user_consents (user_id, document, version, ip_hash, user_agent)
+             VALUES ($1, $2, $3, $4, $5)
+             ON CONFLICT (user_id, document, version) DO NOTHING`,
+            [created.id, document, LEGAL_VERSION, req.clientIpHash ?? null, userAgent],
+          );
+        }
         return created;
       });
     } catch (error) {
@@ -120,6 +123,10 @@ authRouter.post(
       void trySendVerificationEmail(user.email, user.name, verificationToken);
     }
     recordAudit(req, 'register', 'user', user.id);
+    recordAudit(req, 'legal_consent_accepted', 'user', user.id, {
+      version: LEGAL_VERSION,
+      documents: REQUIRED_REGISTRATION_DOCUMENTS,
+    });
     logger.info({ userId: user.id }, 'Novo usuario cadastrado');
 
     const { ensureUserSubscription } = await import('../services/authService.js');
@@ -141,10 +148,12 @@ authRouter.post(
 
     if (!user) {
       await hashPassword(body.password);
+      recordAudit(req, 'login_failed', null, null, { reason: 'unknown_user' });
       throw unauthorized('E-mail ou senha incorretos.');
     }
 
     if (user.locked_until && user.locked_until.getTime() > Date.now()) {
+      recordAudit(req, 'login_blocked', 'user', user.id, { reason: 'temporary_lock' });
       throw new AppError(
         429,
         'ACCOUNT_LOCKED',
@@ -163,7 +172,13 @@ authRouter.post(
          RETURNING failed_login_attempts, locked_until`,
         [user.id],
       );
-      if ((updated.rows[0]?.failed_login_attempts ?? 0) >= 10) {
+      const failedAttempts = updated.rows[0]?.failed_login_attempts ?? 0;
+      recordAudit(req, 'login_failed', 'user', user.id, {
+        reason: 'invalid_password',
+        failedAttempts,
+      });
+      if (failedAttempts >= 10) {
+        recordAudit(req, 'account_locked', 'user', user.id, { failedAttempts });
         logger.warn({ userId: user.id }, 'Conta bloqueada temporariamente por tentativas de login');
       }
       throw unauthorized('E-mail ou senha incorretos.');
@@ -202,7 +217,9 @@ authRouter.get(
       throw unauthorized('Sessao invalida.');
     }
     const { ensureUserSubscription } = await import('../services/authService.js');
-    const subscription = await ensureUserSubscription(user.id);
+    await ensureUserSubscription(user.id);
+    const subscription = await loadSubscription(user.id);
+    const entitlements = await getEntitlements(user.id, user.role);
     res.json({
       user: toAuthUser(user, subscription),
       settings: await ensureSettings(user.id),
@@ -210,18 +227,14 @@ authRouter.get(
         discoveryConfigured: isApifyConfigured() || Boolean(config.googleMapsApiKey),
         emailConfigured: isEmailConfigured(),
       },
-      subscription: {
-        planId: subscription.plan_id,
-        creditsLimit: subscription.credits_limit,
-        creditsUsed: subscription.credits_used,
-      },
+      subscription: entitlements,
     });
   }),
 );
 
 authRouter.post(
   '/forgot-password',
-  authLimiter,
+  forgotPasswordLimiter,
   asyncHandler(async (req, res) => {
     const body = forgotSchema.parse(req.body);
     assertEmailConfigured();
@@ -229,6 +242,7 @@ authRouter.post(
     const user = await findUserByEmail(body.email);
     if (user) {
       const token = await createEmailToken(user.id, 'reset_password', 60);
+      recordAudit(req, 'password_reset_requested', 'user', user.id);
       try {
         await sendPasswordResetEmail(user.email, user.name, token);
         logger.info({ userId: user.id }, 'E-mail de redefinicao solicitado');

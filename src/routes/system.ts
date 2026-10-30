@@ -14,7 +14,7 @@ healthRouter.get(
     const integrations = getIntegrationStatus();
     res.status(db.ok ? 200 : 503).json({
       status: db.ok ? 'ok' : 'degraded',
-      app: 'LeadSearch',
+      app: config.appName,
       version: config.appVersion,
       environment: config.env,
       database: { ok: db.ok, latencyMs: db.latencyMs, ...(db.ok ? {} : { error: 'Banco indisponivel.' }) },

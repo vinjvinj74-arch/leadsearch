@@ -133,6 +133,12 @@ export const DEFAULT_FILTERS = {
   searchId: '',
 };
 
+export const BRAND = 'RADAR';
+export const THEME_KEY = 'radar-theme';
+export const LEGACY_THEME_KEY = 'leadsearch-theme';
+export const CSRF_COOKIE = 'radar_csrf';
+export const LEGACY_CSRF_COOKIE = 'ls_csrf';
+
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 
 export const dom = {
@@ -147,6 +153,7 @@ export const dom = {
   userName: document.getElementById('user-name'),
   userEmail: document.getElementById('user-email'),
   userAvatar: document.getElementById('user-avatar'),
+  planBadge: document.getElementById('plan-badge'),
   sidebar: document.getElementById('sidebar'),
   overlay: document.getElementById('mobile-overlay'),
   logout: document.getElementById('logout-button'),
@@ -178,7 +185,7 @@ export const state = {
   searchTimer: null,
   searchHistory: null,
   settingsTab: 'profile',
-  settingsCache: { integrations: null, diagnostics: null, sessions: null },
+  settingsCache: { integrations: null, diagnostics: null, sessions: null, legal: null },
   modalLeadId: null,
   modalLead: null,
   modalEditing: false,
@@ -283,12 +290,12 @@ export function localInputValue(value) {
 
 export function initials(name) {
   return (
-    String(name || 'LS')
+    String(name || 'RA')
       .trim()
       .split(/\s+/)
       .slice(0, 2)
       .map((part) => part[0]?.toUpperCase() ?? '')
-      .join('') || 'LS'
+      .join('') || 'RA'
   );
 }
 
@@ -348,7 +355,7 @@ export function pageSkeleton(kind) {
 export function emptyState(title, description, actionHtml = '') {
   return `
     <div class="empty-state">
-      <span class="empty-icon" aria-hidden="true">LS</span>
+      <span class="empty-icon" aria-hidden="true"><img src="/logo.png" alt="" class="empty-logo" /></span>
       <h3>${esc(title)}</h3>
       <p>${esc(description)}</p>
       ${actionHtml}
@@ -368,7 +375,7 @@ export function readCookie(name) {
 
 export async function ensureCsrf(force = false) {
   if (!force) {
-    const cookie = readCookie('ls_csrf');
+    const cookie = readCookie(CSRF_COOKIE) ?? readCookie(LEGACY_CSRF_COOKIE);
     if (cookie) {
       state.csrf = decodeURIComponent(cookie);
       return state.csrf;
@@ -382,7 +389,7 @@ export async function ensureCsrf(force = false) {
   });
   if (!response.ok) throw new Error('Não foi possível iniciar a proteção CSRF.');
   const data = await response.json();
-  const cookie = readCookie('ls_csrf');
+  const cookie = readCookie(CSRF_COOKIE) ?? readCookie(LEGACY_CSRF_COOKIE);
   state.csrf = data.csrfToken || (cookie ? decodeURIComponent(cookie) : null);
   return state.csrf;
 }
@@ -548,7 +555,10 @@ export function applyTheme(preference, persist = true) {
       : valid;
   document.documentElement.dataset.theme = resolved;
   if (dom.themeMeta) dom.themeMeta.content = resolved === 'light' ? '#f5f6f8' : '#08090b';
-  if (persist) localStorage.setItem('leadsearch-theme', valid);
+  if (persist) {
+    localStorage.setItem(THEME_KEY, valid);
+    localStorage.removeItem(LEGACY_THEME_KEY);
+  }
 }
 
 export function mapsConfigured() {
@@ -596,6 +606,60 @@ export function paintUser() {
   dom.userName.textContent = state.user.name;
   dom.userEmail.textContent = state.user.email;
   dom.userAvatar.textContent = initials(state.user.name);
+  paintPlanBadge();
+}
+
+export function paintPlanBadge() {
+  if (!dom.planBadge) return;
+  const user = state.user;
+  dom.planBadge.classList.remove('badge-accent', 'badge-warning');
+  if (!user) {
+    dom.planBadge.textContent = 'Plano: —';
+    dom.planBadge.title = '';
+    return;
+  }
+  if (user.isSuperAdmin) {
+    dom.planBadge.textContent = 'Super admin';
+    dom.planBadge.classList.add('badge-accent');
+    dom.planBadge.title = 'Acesso administrativo completo.';
+    return;
+  }
+  if (user.unlimited) {
+    dom.planBadge.textContent = 'Acesso ilimitado';
+    dom.planBadge.classList.add('badge-accent');
+    return;
+  }
+  if (user.planId && user.planName) {
+    const remaining =
+      typeof user.creditsRemaining === 'number'
+        ? ` · ${new Intl.NumberFormat('pt-BR').format(user.creditsRemaining)} créditos`
+        : '';
+    dom.planBadge.textContent = `${user.planName}${remaining}`;
+    dom.planBadge.classList.toggle('badge-warning', !user.canSearch);
+    dom.planBadge.classList.toggle('badge-accent', Boolean(user.canSearch));
+    dom.planBadge.title = user.canSearch
+      ? `Plano ${user.planName}. Cada pesquisa consome 1 crédito.`
+      : 'Plano sem créditos ou inativo. Abra /sales para renovar.';
+    return;
+  }
+  dom.planBadge.textContent = 'Sem plano ativo';
+  dom.planBadge.classList.add('badge-warning');
+  dom.planBadge.title = 'Contrate um plano para executar pesquisas. Dashboards e históricos continuam somente leitura.';
+}
+
+export function syncCredits(credits) {
+  if (!state.user || !credits) return;
+  if (typeof credits.remaining === 'number') {
+    state.user.creditsRemaining = credits.remaining;
+    if (typeof state.user.creditsLimit === 'number' && state.user.creditsLimit > 0) {
+      state.user.creditsUsed = Math.max(0, state.user.creditsLimit - credits.remaining);
+    }
+    if (!state.user.unlimited) {
+      state.user.canSearch = credits.remaining > 0 && Boolean(state.user.active);
+      state.user.needsUpgrade = !state.user.canSearch;
+    }
+  }
+  paintPlanBadge();
 }
 
 export function showUpgradeModal() {
@@ -604,40 +668,33 @@ export function showUpgradeModal() {
   modal.id = 'upgrade-modal';
   modal.className = 'modal-backdrop';
   modal.innerHTML = `
-    <div class="modal" role="dialog" aria-modal="true" style="max-width:520px">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="upgrade-title" style="max-width:520px">
       <div class="modal-head">
         <div>
-          <h3>Assine um plano</h3>
-          <p>Escolha o plano ideal para continuar pesquisando.</p>
+          <h3 id="upgrade-title">Assine um plano</h3>
+          <p>Escolha entre Starter, Pro ou Business para voltar a executar pesquisas.</p>
         </div>
-        <button class="btn btn-ghost btn-icon" data-action="close-upgrade">×</button>
+        <button class="btn btn-ghost btn-icon" type="button" data-action="close-upgrade" aria-label="Fechar">×</button>
       </div>
       <div class="modal-body">
-        <div class="grid-2" style="gap:12px">
-          <div class="panel" style="margin:0">
-            <div class="panel-body">
-              <h4>Básico</h4>
-              <p class="small muted">R$ 39,90 / mês</p>
-              <p><strong>25</strong> créditos por mês</p>
-            </div>
-          </div>
-          <div class="panel" style="margin:0">
-            <div class="panel-body">
-              <h4>Ilimitado</h4>
-              <p class="small muted">R$ 97,90 / mês</p>
-              <p><strong>150</strong> créditos por mês</p>
-            </div>
-          </div>
-        </div>
-        <p class="small muted" style="margin-top:10px">Após escolher, um administrador pode ativar seu plano.</p>
+        <p>
+          Abrir dashboards, consultar históricos e visualizar resultados continua disponível sem assinatura. Para
+          executar novas pesquisas, exportar dados e usar operações com custo externo, é necessário um plano ativo
+          com créditos disponíveis.
+        </p>
+        <p class="small muted">
+          Cada pesquisa executada consome 1 crédito. Os créditos são renovados a cada mês no plano contratado.
+        </p>
+        <a class="btn btn-primary" href="/sales">Ver planos e assinar</a>
       </div>
       <div class="modal-foot">
-        <button class="btn btn-ghost" data-action="close-upgrade">Fechar</button>
+        <button class="btn btn-ghost" type="button" data-action="close-upgrade">Fechar</button>
       </div>
     </div>
   `;
   document.body.appendChild(modal);
   document.body.style.overflow = 'hidden';
+  modal.querySelector('[data-action="close-upgrade"]')?.focus();
 }
 
 export function closeUpgradeModal() {
@@ -650,7 +707,7 @@ export function paintRoute() {
   const route = ROUTES[state.route] ?? ROUTES.dashboard;
   dom.pageTitle.textContent = route.title;
   dom.pageSubtitle.textContent = route.subtitle;
-  document.title = `${route.title} · LeadSearch`;
+  document.title = `${route.title} · ${BRAND}`;
   document.querySelectorAll('.nav-link[data-route]').forEach((link) => {
     const active = link.dataset.route === state.route;
     link.classList.toggle('is-active', active);

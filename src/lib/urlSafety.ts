@@ -158,7 +158,7 @@ function requestOnce(
       path: `${url.pathname}${url.search}`,
       method: 'GET',
       headers: {
-        'User-Agent': 'LeadSearchBot/1.0 (+verificacao de sites; contato pelo proprietario do sistema)',
+        'User-Agent': 'RADARBot/1.0 (+verificacao de sites; contato: vinjvinj74@gmail.com)',
         Accept: 'text/html,application/xhtml+xml,text/plain;q=0.8,*/*;q=0.1',
         'Accept-Language': 'pt-BR,pt;q=0.8,en;q=0.5',
         'Accept-Encoding': 'identity',

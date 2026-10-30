@@ -178,7 +178,7 @@ export async function getSystemDiagnostics(userId: string) {
 
   return {
     app: {
-      name: 'LeadSearch',
+      name: config.appName,
       version: config.appVersion,
       environment: config.env,
       node: process.version,

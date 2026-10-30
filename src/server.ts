@@ -6,6 +6,7 @@ import { closePool } from './db/pool.js';
 import { logger } from './lib/logger.js';
 import { recoverStaleRadarSearches } from './services/radarService.js';
 import { recoverStaleSearches } from './services/searchService.js';
+import { renewManualSubscriptions } from './services/subscriptionService.js';
 
 async function start(): Promise<void> {
   let lastError: unknown = null;
@@ -29,17 +30,27 @@ async function start(): Promise<void> {
     logger.warn({ err: error }, 'Falha ao recuperar pesquisas do Radar antigas');
   });
 
+  const renew = () => {
+    renewManualSubscriptions()
+      .then((count) => {
+        if (count) logger.info({ count }, 'Assinaturas manuais renovadas');
+      })
+      .catch((error) => logger.warn({ err: error }, 'Falha ao renovar assinaturas manuais'));
+  };
+  renew();
+  setInterval(renew, 60 * 60 * 1000).unref();
+
   const app = createApp();
   const server = http.createServer(app);
   server.requestTimeout = 30000;
   server.headersTimeout = 35000;
 
   server.listen(config.port, () => {
-    logger.info({ port: config.port, env: config.env }, 'LeadSearch iniciado');
+    logger.info({ port: config.port, env: config.env }, 'RADAR iniciado');
   });
 
   const shutdown = (signal: string) => {
-    logger.info({ signal }, 'Encerrando LeadSearch');
+    logger.info({ signal }, 'Encerrando RADAR');
     server.close(() => {
       closePool()
         .catch(() => undefined)
@@ -60,6 +71,6 @@ async function start(): Promise<void> {
 }
 
 start().catch((error) => {
-  logger.fatal({ err: error }, 'Falha ao iniciar LeadSearch');
+  logger.fatal({ err: error }, 'Falha ao iniciar RADAR');
   process.exit(1);
 });

@@ -20,6 +20,7 @@ import {
 } from './apifyService.js';
 import { searchPlaces, searchPlacesFallback, type PlaceResult, type SearchParams } from './placesService.js';
 import { runSearchEnrichment } from './enrichmentService.js';
+import { attachCreditToSearch, refundCreditByReference } from './subscriptionService.js';
 import type { LeadRow } from './leadsService.js';
 
 export interface SearchRow {
@@ -372,7 +373,9 @@ async function processApifySearch(
   params: SearchParams,
   weights: Partial<ScoreWeights> | null,
   allowEnrichment: boolean,
+  creditReference?: string,
 ): Promise<void> {
+  let resultsImported = false;
   try {
     const run = await waitForSearchRun(runId);
     if (!run.defaultDatasetId) {
@@ -401,6 +404,7 @@ async function processApifySearch(
     );
 
     const nextStatus = allowEnrichment ? 'enriching' : 'completed';
+    resultsImported = true;
     await query(
       `UPDATE searches SET
         status = $3,
@@ -431,6 +435,15 @@ async function processApifySearch(
        WHERE id = $1 AND user_id = $2`,
       [searchId, userId, 'Nao foi possivel concluir a pesquisa.'],
     );
+    if (!resultsImported && creditReference) {
+      await refundCreditByReference(
+        userId,
+        creditReference,
+        'Pesquisa não concluída pelo provedor: crédito devolvido.',
+      ).catch((refundError) => {
+        logger.error({ err: refundError, userId, searchId }, 'Falha ao devolver credito da pesquisa');
+      });
+    }
   }
 }
 
@@ -440,6 +453,7 @@ async function createApifySearch(
   limit: number,
   weights: Partial<ScoreWeights> | null,
   allowEnrichment: boolean,
+  creditReference?: string,
 ) {
   const releaseSlot = reserveApifyRun();
   let search: SearchRow | null = null;
@@ -456,8 +470,18 @@ async function createApifySearch(
       [search.id, userId, run.runId],
     );
     search = updated.rows[0] ?? search;
+    if (creditReference) await attachCreditToSearch(userId, creditReference, search.id);
 
-    void processApifySearch(userId, search.id, run.runId, limit, params, weights, allowEnrichment)
+    void processApifySearch(
+      userId,
+      search.id,
+      run.runId,
+      limit,
+      params,
+      weights,
+      allowEnrichment,
+      creditReference,
+    )
       .catch((error) => {
         logger.error({ err: error, searchId: search?.id, runId: run.runId }, 'Falha nao tratada da pesquisa');
       })
@@ -486,12 +510,20 @@ export async function createSearch(
   params: SearchParams,
   weights: Partial<ScoreWeights> | null,
   allowEnrichment: boolean,
+  creditReference?: string,
 ) {
   const limit = Math.min(Math.max(params.limit, 1), config.maxSearchResults);
 
   if (isApifyConfigured()) {
     try {
-      return await createApifySearch(userId, params, limit, weights, allowEnrichment);
+      return await createApifySearch(
+        userId,
+        params,
+        limit,
+        weights,
+        allowEnrichment,
+        creditReference,
+      );
     } catch (error) {
       logger.warn({ err: error, userId }, 'Apify falhou, usando fallback');
       // fall through to fallback
@@ -501,6 +533,7 @@ export async function createSearch(
   const costNote = 'A pesquisa pode consumir creditos e gerar cobranca.';
 
   const search = await insertSearchRow(userId, params, limit, 'google_places', costNote);
+  if (creditReference) await attachCreditToSearch(userId, creditReference, search.id);
 
   let places: PlaceResult[];
   try {
@@ -515,6 +548,15 @@ export async function createSearch(
        WHERE id = $1 AND user_id = $2`,
       [search.id, userId, 'Nao foi possivel concluir a pesquisa.'],
     );
+    if (creditReference) {
+      await refundCreditByReference(
+        userId,
+        creditReference,
+        'Pesquisa não concluída pelo provedor: crédito devolvido.',
+      ).catch((refundError) => {
+        logger.error({ err: refundError, userId, searchId: search.id }, 'Falha ao devolver credito da pesquisa');
+      });
+    }
     throw error;
   }
 

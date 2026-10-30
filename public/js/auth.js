@@ -1,4 +1,5 @@
 import {
+  BRAND,
   DEFAULT_FILTERS,
   ROUTES,
   api,
@@ -55,7 +56,7 @@ export function showAuth({ clearHash = false } = {}) {
   closeSidebar();
   closeModal({ updateHash: false });
   if (clearHash) clearAuthHash();
-  document.title = 'Entrar · LeadSearch';
+  document.title = `Entrar · ${BRAND}`;
   setAuthPanel('login');
 }
 
@@ -91,7 +92,9 @@ function resetAuthState() {
   state.settingsCache = {
     integrations: null,
     diagnostics: null,
+    legal: null,
     sessions: null,
+    admin: null,
     mapsTest: null,
     mapsTesting: false,
   };
@@ -258,11 +261,20 @@ export async function handleAuthSubmit(form) {
       showFormError(form, 'A confirmação não corresponde à senha.');
       return;
     }
+    if (!form.querySelector('[name="acceptLegal"]')?.checked) {
+      showFormError(form, 'Para criar a conta, aceite os Termos de Uso e a Política de Privacidade.');
+      return;
+    }
     setFormBusy(form, true, 'Criando conta...');
     try {
       const result = await api('/api/auth/register', {
         method: 'POST',
-        body: { name: data.name, email: data.email, password: data.password },
+        body: {
+          name: data.name,
+          email: data.email,
+          password: data.password,
+          acceptLegal: true,
+        },
       });
       setFormBusy(form, false);
       form.reset();

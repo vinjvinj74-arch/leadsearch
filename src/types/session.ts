@@ -1,15 +1,29 @@
+import type { PlanId, UserRole } from '../plans.js';
+import type { AccessReason, SubscriptionStatus } from '../services/subscriptionService.js';
+
 export interface AuthUser {
   id: string;
   name: string;
   email: string;
   emailVerifiedAt: string | null;
   createdAt: string;
-  role?: 'user' | 'admin';
-  planId?: string | null;
-  creditsLimit?: number;
-  creditsUsed?: number;
-  creditsRemaining?: number;
-  needsUpgrade?: boolean;
+  role: UserRole;
+  isSuperAdmin: boolean;
+  planId: PlanId | null;
+  planName: string | null;
+  planStatus: SubscriptionStatus | null;
+  creditsLimit: number;
+  creditsUsed: number;
+  creditsRemaining: number;
+  canSearch: boolean;
+  active: boolean;
+  unlimited: boolean;
+  accessReason: AccessReason;
+  renewsAt: string | null;
+  provider: string | null;
+  providerCustomerId: string | null;
+  creditUnit: string;
+  needsUpgrade: boolean;
 }
 
 export interface AuthSession {

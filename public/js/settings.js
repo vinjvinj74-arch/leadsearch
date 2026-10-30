@@ -25,22 +25,51 @@ import {
   handleAdvancedSettingsSubmit,
   integrationsTabMarkup,
   loadIntegrationsTabData,
+  loadPrivacyTabData,
   loadSecurityTabData,
+  privacyTabMarkup,
   securityTabMarkup,
 } from './settingsAdvanced.js';
+import {
+  adminTabMarkup,
+  handleAdminAction,
+  handleAdminSubmit,
+  loadAdminTabData,
+} from './admin.js';
 
 const MAX_SEARCH_RESULTS = 5;
 
-const TABS = [
+const BASE_TABS = [
   ['profile', 'Perfil'],
   ['preferences', 'Preferências'],
+  ['plan', 'Plano e créditos'],
   ['score', 'Pontuação'],
   ['export', 'Exportação'],
   ['integrations', 'Integrações'],
   ['security', 'Segurança'],
+  ['privacy', 'Privacidade'],
 ];
 
+function settingsTabs() {
+  const tabs = [...BASE_TABS];
+  if (state.user?.isSuperAdmin) tabs.push(['admin', 'Administrador']);
+  return tabs;
+}
+
 const checked = (value) => (value ? ' checked' : '');
+
+function setBusyButton(button, busy, label = 'Aguarde...') {
+  if (!button) return;
+  if (busy) {
+    button.dataset.previousLabel = button.textContent;
+    button.textContent = label;
+    button.disabled = true;
+  } else {
+    button.textContent = button.dataset.previousLabel || button.textContent;
+    button.disabled = false;
+    delete button.dataset.previousLabel;
+  }
+}
 
 function profileTabMarkup() {
   const user = state.user;
@@ -213,18 +242,61 @@ function exportTabMarkup() {
       </section>
       <section class="settings-section">
         <h3>Exportação completa</h3>
-        <p>Para baixar todos os dados da conta em JSON, acesse a aba Segurança.</p>
+        <p>Para baixar todos os dados da conta em JSON, acesse a aba Privacidade.</p>
         <a class="btn" href="/api/account/export">Baixar backup da conta</a>
+      </section>
+    </div>`;
+}
+
+function planTabMarkup() {
+  const user = state.user;
+  const fmt = new Intl.NumberFormat('pt-BR');
+  const renew = user.renewsAt
+    ? new Intl.DateTimeFormat('pt-BR', { dateStyle: 'long' }).format(new Date(user.renewsAt))
+    : null;
+  const statusLabel = user.isSuperAdmin
+    ? 'Acesso administrativo completo'
+    : user.planId
+      ? `${esc(user.planName)} · ${esc(user.planStatus ?? '')}`
+      : 'Sem plano ativo';
+  return `
+    <div class="settings-panel">
+      <section class="settings-section">
+        <h3>Plano e créditos</h3>
+        <p>O plano, o saldo e o consumo são controlados pelo servidor. O frontend apenas exibe os valores retornados.</p>
+        <dl class="kv small">
+          <dt>Plano atual</dt><dd>${statusLabel}</dd>
+          <dt>Créditos no período</dt><dd>${user.unlimited ? 'Ilimitados (administrador)' : `${fmt.format(user.creditsRemaining ?? 0)} de ${fmt.format(user.creditsLimit ?? 0)} disponíveis`}</dd>
+          <dt>Créditos consumidos</dt><dd>${fmt.format(user.creditsUsed ?? 0)}</dd>
+          <dt>Renovação</dt><dd>${user.unlimited ? 'Não se aplica' : renew ? esc(renew) : 'Sem período ativo'}</dd>
+        </dl>
+        <p class="small muted">${esc(user.creditUnit ?? 'Cada pesquisa executada consome 1 crédito.')}</p>
+        <div class="settings-actions">
+          <a class="btn btn-primary" href="/sales">Ver planos e assinar</a>
+          ${
+            user.providerCustomerId
+              ? '<button class="btn" type="button" data-action="billing-portal">Gerenciar cobrança</button>'
+              : ''
+          }
+        </div>
+        ${
+          user.needsUpgrade && !user.unlimited
+            ? '<div class="notice notice-warning" style="margin-top:14px"><span>Dashboards e históricos continuam disponíveis em modo somente leitura. Para pesquisar, exportar ou usar operações com custo externo, contrate ou renove um plano.</span></div>'
+            : ''
+        }
       </section>
     </div>`;
 }
 
 function tabMarkup(tab) {
   if (tab === 'preferences') return preferencesTabMarkup();
+  if (tab === 'plan') return planTabMarkup();
   if (tab === 'score') return scoreTabMarkup();
   if (tab === 'export') return exportTabMarkup();
   if (tab === 'security') return securityTabMarkup();
   if (tab === 'integrations') return integrationsTabMarkup();
+  if (tab === 'privacy') return privacyTabMarkup();
+  if (tab === 'admin') return adminTabMarkup();
   return profileTabMarkup();
 }
 
@@ -232,10 +304,12 @@ function settingsLayoutMarkup() {
   return `
     <div class="settings-layout">
       <nav class="settings-nav" aria-label="Seções de configuração">
-        ${TABS.map(
-          ([key, label]) =>
-            `<button type="button" data-settings-tab="${key}" data-action="settings-tab" class="${state.settingsTab === key ? 'is-active' : ''}">${label}</button>`,
-        ).join('')}
+        ${settingsTabs()
+          .map(
+            ([key, label]) =>
+              `<button type="button" data-settings-tab="${key}" data-action="settings-tab" class="${state.settingsTab === key ? 'is-active' : ''}">${label}</button>`,
+          )
+          .join('')}
       </nav>
       <div id="settings-tab-content"></div>
     </div>`;
@@ -266,6 +340,14 @@ function loadTabData() {
   } else if (state.settingsTab === 'integrations') {
     if (state.settingsCache.diagnostics === null) {
       void loadIntegrationsTabData(currentRerender('integrations'));
+    }
+  } else if (state.settingsTab === 'privacy') {
+    if (state.settingsCache.legal === null) {
+      void loadPrivacyTabData(currentRerender('privacy'));
+    }
+  } else if (state.settingsTab === 'admin') {
+    if (state.settingsCache.admin === null) {
+      void loadAdminTabData(currentRerender('admin'));
     }
   }
 }
@@ -418,14 +500,32 @@ export async function handleSettingsAction(element) {
 
   if (action === 'settings-tab') {
     const tab = element.dataset.settingsTab;
-    if (!TABS.some(([key]) => key === tab)) return true;
+    if (!settingsTabs().some(([key]) => key === tab)) return true;
     state.settingsTab = tab;
     if (tab === 'security') state.settingsCache.sessions = null;
     if (tab === 'integrations') state.settingsCache.diagnostics = null;
+    if (tab === 'privacy') state.settingsCache.legal = null;
+    if (tab === 'admin') state.settingsCache.admin = null;
     renderSettingsTab();
     loadTabData();
     return true;
   }
+
+  if (action === 'billing-portal') {
+    setBusyButton(element, true, 'Abrindo...');
+    try {
+      const result = await api('/api/billing/portal', { method: 'POST', body: {} });
+      if (result?.portalUrl) window.location.href = result.portalUrl;
+      else toast('Portal de cobrança indisponível.', 'warning');
+    } catch (error) {
+      toast(errorMessage(error), 'error');
+    } finally {
+      setBusyButton(element, false);
+    }
+    return true;
+  }
+
+  if (await handleAdminAction(element, currentRerender('admin'))) return true;
 
   if (action === 'settings-reset-weights') {
     const form = element.closest('form');
@@ -444,6 +544,7 @@ export async function handleSettingsAction(element) {
 
 export async function handleSettingsSubmit(form) {
   clearFormMessages(form);
+  if (await handleAdminSubmit(form)) return;
   if (await handleAdvancedSettingsSubmit(form)) return;
 
   const kind = form.dataset.form;

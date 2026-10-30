@@ -171,7 +171,7 @@ async function geocodeForRadius(
   try {
     const response = await fetch(url, {
       headers: {
-        'User-Agent': `LeadSearch/1.0 (+${config.appUrl || 'https://leadsearch-production.up.railway.app'})`,
+        'User-Agent': `RADAR/1.0 (+${config.appUrl || 'https://leeadsearch.netlify.app'})`,
         Accept: 'application/json',
       },
       signal: AbortSignal.timeout(10_000),

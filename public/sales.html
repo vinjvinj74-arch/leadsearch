@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#08090b" />
+    <meta
+      name="description"
+      content="Planos do RADAR: Starter, Pro e Business. Pesquise empresas, encontre contatos e organize sua prospecção."
+    />
+    <title>Planos · RADAR</title>
+    <link rel="icon" href="/logo.png" type="image/png" />
+    <link rel="stylesheet" href="/legal.css" />
+    <link rel="stylesheet" href="/sales.css" />
+  </head>
+  <body>
+    <header class="legal-header">
+      <a class="legal-brand" href="/"><img src="/logo.png" alt="RADAR" /><span>RADAR</span></a>
+      <nav class="legal-nav" aria-label="Navegação">
+        <a href="/#/dashboard">Abrir aplicativo</a>
+        <a href="/contact">Contato</a>
+        <a href="/termos">Termos</a>
+      </nav>
+    </header>
+
+    <main class="sales-main">
+      <section class="sales-hero">
+        <p class="eyebrow">Planos RADAR</p>
+        <h1>Prospecte com o volume certo para a sua rotina.</h1>
+        <p class="sales-lead">
+          Encontre empresas, descubra canais de contato públicos e organize oportunidades em um só lugar.
+          Todos os planos são mensais, com créditos renovados a cada período. Cada pesquisa executada consome
+          1 crédito; abrir dashboards, navegar, filtrar e consultar históricos não consome créditos.
+        </p>
+        <div id="sales-status" class="sales-status" role="status" hidden></div>
+        <div id="account-summary" class="account-summary" hidden></div>
+      </section>
+
+      <section aria-labelledby="plans-title">
+        <div class="sales-section-head">
+          <h2 id="plans-title">Escolha seu plano</h2>
+          <p class="meta">Valores e créditos definidos pelo servidor. Cancele quando quiser.</p>
+        </div>
+        <div id="plans-grid" class="plans-grid" aria-live="polite">
+          <p class="muted">Carregando planos...</p>
+        </div>
+        <div id="billing-warning" class="card warning" hidden></div>
+      </section>
+
+      <section id="comparison-section" aria-labelledby="comparison-title" hidden>
+        <h2 id="comparison-title">Comparativo</h2>
+        <div class="table-wrap sales-comparison">
+          <table class="sales-table">
+            <thead>
+              <tr>
+                <th scope="col">Recurso</th>
+                <th scope="col" data-plan-head="starter">Starter</th>
+                <th scope="col" data-plan-head="pro">Pro</th>
+                <th scope="col" data-plan-head="business">Business</th>
+              </tr>
+            </thead>
+            <tbody id="comparison-body"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section aria-labelledby="how-title">
+        <h2 id="how-title">Como funciona</h2>
+        <div class="sales-grid-3">
+          <article class="card sales-info">
+            <h3>Créditos por pesquisa</h3>
+            <p>
+              Cada pesquisa executada consome 1 crédito. Os créditos são renovados a cada mês no plano
+              contratado. Ao atingir zero, novas pesquisas ficam bloqueadas até a renovação ou um novo plano.
+            </p>
+          </article>
+          <article class="card sales-info">
+            <h3>Somente leitura sem plano</h3>
+            <p>
+              Sem assinatura ativa, você continua acessando dashboards e históricos em modo somente leitura.
+              Pesquisas, exportações e operações com custo externo ficam bloqueadas.
+            </p>
+          </article>
+          <article class="card sales-info">
+            <h3>Pagamento seguro</h3>
+            <p>
+              O pagamento é processado por provedor externo. O RADAR não armazena dados de cartão. O
+              cancelamento pode ser feito a qualquer momento e o acesso permanece até o fim do período pago.
+            </p>
+          </article>
+        </div>
+      </section>
+
+      <section aria-labelledby="faq-title">
+        <h2 id="faq-title">Dúvidas frequentes</h2>
+        <div class="sales-faq">
+          <details class="card">
+            <summary>Quando meus créditos são renovados?</summary>
+            <p>
+              A renovação ocorre a cada período mensal pago. O saldo e a data de renovação aparecem na aba
+              “Plano e créditos” dentro do aplicativo.
+            </p>
+          </details>
+          <details class="card">
+            <summary>Posso cancelar a qualquer momento?</summary>
+            <p>
+              Sim. O cancelamento interrompe cobranças futuras. O acesso permanece até o fim do período já
+              pago, salvo pedido de encerramento imediato. Veja a
+              <a href="/refund-policy">Política de Reembolso e Cancelamento</a>.
+            </p>
+          </details>
+          <details class="card">
+            <summary>O que acontece se uma pesquisa falhar?</summary>
+            <p>
+              Se a pesquisa falhar antes de produzir resultados por falha do provedor, o crédito é devolvido
+              automaticamente. Pesquisas concluídas sem resultados não geram reembolso, pois a consulta foi
+              executada.
+            </p>
+          </details>
+          <details class="card">
+            <summary>Preciso de nota fiscal ou suporte?</summary>
+            <p>
+              Fale com o suporte pela <a href="/contact">página de contato</a>. Informe o e-mail da conta, o
+              plano e o motivo da solicitação para receber um protocolo de atendimento.
+            </p>
+          </details>
+        </div>
+      </section>
+    </main>
+
+    <footer class="legal-footer">
+      <nav aria-label="Links legais">
+        <a href="/termos">Termos</a>
+        <a href="/privacidade">Privacidade</a>
+        <a href="/cookies">Cookies</a>
+        <a href="/acceptable-use">Uso aceitável</a>
+        <a href="/refund-policy">Reembolso</a>
+        <a href="/data-deletion">Exclusão de dados</a>
+        <a href="/contact">Contato</a>
+      </nav>
+      <p>© 2026 RADAR. Todos os direitos reservados.</p>
+    </footer>
+
+    <script type="module" src="/js/sales.js"></script>
+  </body>
+</html>

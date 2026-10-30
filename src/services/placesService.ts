@@ -216,7 +216,7 @@ export async function searchPlacesFallback(params: SearchParams): Promise<PlaceR
     const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&addressdetails=1&limit=${Math.min(Math.max(params.limit, 1), config.maxSearchResults)}&accept-language=pt-BR`;
     const response = await fetch(url, {
       headers: {
-        'User-Agent': 'LeadSearch/1.0 (contact@leadsearch.local)',
+        'User-Agent': 'RADAR/1.0 (+https://leeadsearch.netlify.app; contato: vinjvinj74@gmail.com)',
       },
       signal: AbortSignal.timeout(15000),
     });

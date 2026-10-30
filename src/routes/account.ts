@@ -6,6 +6,7 @@ import { clearCsrfCookie, clearSessionCookie } from '../lib/cookies.js';
 import { badRequest, conflict, notFound, unauthorized } from '../lib/errors.js';
 import { asyncHandler } from '../lib/http.js';
 import { requireAuth } from '../middleware/auth.js';
+import { mutationLimiter } from '../middleware/rateLimit.js';
 import {
   findUserById,
   hashPassword,
@@ -42,6 +43,7 @@ const deleteSchema = z.object({ password: z.string().min(1).max(128) });
 
 accountRouter.patch(
   '/',
+  mutationLimiter,
   asyncHandler(async (req, res) => {
     const body = profileSchema.parse(req.body);
     const user = await findUserById(req.user!.id);
@@ -85,6 +87,7 @@ accountRouter.patch(
 
 accountRouter.post(
   '/password',
+  mutationLimiter,
   asyncHandler(async (req, res) => {
     const body = passwordChangeSchema.parse(req.body);
     const user = await findUserById(req.user!.id);
@@ -134,6 +137,7 @@ accountRouter.get(
 
 accountRouter.delete(
   '/sessions/:id',
+  mutationLimiter,
   asyncHandler(async (req, res) => {
     const id = z.string().uuid().parse(req.params.id);
     const result = await query(
@@ -152,6 +156,7 @@ accountRouter.delete(
 
 accountRouter.post(
   '/logout-all',
+  mutationLimiter,
   asyncHandler(async (req, res) => {
     await revokeUserSessions(req.user!.id);
     clearSessionCookie(res);
@@ -164,7 +169,7 @@ accountRouter.get(
   '/export',
   asyncHandler(async (req, res) => {
     const userId = req.user!.id;
-    const [user, settings, leads, activities, searches, sources, contacts] = await Promise.all([
+    const [user, settings, leads, activities, searches, sources, contacts, consents] = await Promise.all([
       findUserById(userId),
       ensureSettings(userId),
       query('SELECT * FROM leads WHERE user_id = $1 ORDER BY created_at DESC LIMIT 5000', [userId]),
@@ -178,6 +183,10 @@ accountRouter.get(
       ),
       query(
         `SELECT lc.* FROM lead_contacts lc JOIN leads l ON l.id = lc.lead_id WHERE l.user_id = $1 LIMIT 10000`,
+        [userId],
+      ),
+      query(
+        `SELECT document, version, accepted_at FROM user_consents WHERE user_id = $1 ORDER BY accepted_at DESC`,
         [userId],
       ),
     ]);
@@ -214,13 +223,14 @@ accountRouter.get(
       searches: safeSearches,
       sources: safeSources,
       contacts: contacts.rows,
+      consents: consents.rows,
       integrations: getIntegrationStatus(),
     };
     recordAudit(req, 'account_data_exported', 'user', userId);
     res.setHeader('Content-Type', 'application/json; charset=utf-8');
     res.setHeader(
       'Content-Disposition',
-      `attachment; filename="leadsearch-dados-${new Date().toISOString().slice(0, 10)}.json"`,
+      `attachment; filename="radar-dados-${new Date().toISOString().slice(0, 10)}.json"`,
     );
     res.send(JSON.stringify(payload, null, 2));
   }),
@@ -228,6 +238,7 @@ accountRouter.get(
 
 accountRouter.delete(
   '/',
+  mutationLimiter,
   asyncHandler(async (req, res) => {
     const body = deleteSchema.parse(req.body);
     const user = await findUserById(req.user!.id);

@@ -6,6 +6,7 @@ import { toCsv } from '../lib/csv.js';
 import { badRequest } from '../lib/errors.js';
 import { asyncHandler, parsePage, parsePageSize } from '../lib/http.js';
 import { requireAuth } from '../middleware/auth.js';
+import { loadEntitlements, requireToolAccess } from '../middleware/entitlements.js';
 import { exportLimiter } from '../middleware/rateLimit.js';
 import { checkAndSaveWebsite } from '../services/siteVerifier.js';
 import { enrichLead } from '../services/enrichmentService.js';
@@ -24,7 +25,7 @@ import {
 import { ensureSettings } from '../services/settingsService.js';
 
 export const leadsRouter = Router();
-leadsRouter.use(requireAuth);
+leadsRouter.use(requireAuth, loadEntitlements);
 
 const emptyToUndefined = (value: unknown) => (value === '' || value === null ? undefined : value);
 const optionalString = (max: number) => z.preprocess(emptyToUndefined, z.string().trim().max(max).optional());
@@ -124,6 +125,7 @@ const FIELD_LABELS: Record<string, string> = {
 leadsRouter.get(
   '/export.csv',
   exportLimiter,
+  requireToolAccess,
   asyncHandler(async (req, res) => {
     const parsed = exportQuerySchema.parse(req.query);
     const filters = toFilters(parsed);
@@ -175,7 +177,7 @@ leadsRouter.get(
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader(
       'Content-Disposition',
-      `attachment; filename="leadsearch-leads-${new Date().toISOString().slice(0, 10)}.csv"`,
+      `attachment; filename="radar-leads-${new Date().toISOString().slice(0, 10)}.csv"`,
     );
     res.send(csv);
   }),
@@ -222,6 +224,7 @@ const patchSchema = z.object({
 
 leadsRouter.patch(
   '/:id',
+  requireToolAccess,
   asyncHandler(async (req, res) => {
     const id = leadIdSchema.parse(req.params.id);
     const body = patchSchema.parse(req.body);
@@ -260,6 +263,7 @@ leadsRouter.get(
 
 leadsRouter.post(
   '/:id/activities',
+  requireToolAccess,
   asyncHandler(async (req, res) => {
     const id = leadIdSchema.parse(req.params.id);
     const body = activitySchema.parse(req.body);
@@ -281,6 +285,7 @@ const dncSchema = z.object({
 
 leadsRouter.post(
   '/:id/do-not-contact',
+  requireToolAccess,
   asyncHandler(async (req, res) => {
     const id = leadIdSchema.parse(req.params.id);
     const body = dncSchema.parse(req.body);
@@ -292,6 +297,7 @@ leadsRouter.post(
 
 leadsRouter.post(
   '/:id/verify-site',
+  requireToolAccess,
   asyncHandler(async (req, res) => {
     const id = leadIdSchema.parse(req.params.id);
     const result = await checkAndSaveWebsite(req.user!.id, id);
@@ -305,6 +311,7 @@ leadsRouter.post(
 
 leadsRouter.post(
   '/:id/enrich',
+  requireToolAccess,
   asyncHandler(async (req, res) => {
     const id = leadIdSchema.parse(req.params.id);
     const result = await enrichLead(req.user!.id, id);
@@ -315,6 +322,7 @@ leadsRouter.post(
 
 leadsRouter.post(
   '/:id/score',
+  requireToolAccess,
   asyncHandler(async (req, res) => {
     const id = leadIdSchema.parse(req.params.id);
     const result = await recalculateLead(req.user!.id, id);

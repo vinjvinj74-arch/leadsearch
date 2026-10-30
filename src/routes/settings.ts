@@ -4,6 +4,7 @@ import { config, EXPORT_FIELDS, THEMES } from '../config.js';
 import { recordAudit } from '../lib/audit.js';
 import { asyncHandler } from '../lib/http.js';
 import { requireAuth } from '../middleware/auth.js';
+import { loadEntitlements, requireToolAccess } from '../middleware/entitlements.js';
 import { searchLimiter } from '../middleware/rateLimit.js';
 import { isApifyConfigured, testApifyConnection } from '../services/apifyService.js';
 import { testGooglePlaces } from '../services/placesService.js';
@@ -48,7 +49,7 @@ settingsRouter.patch(
 );
 
 export const integrationsRouter = Router();
-integrationsRouter.use(requireAuth);
+integrationsRouter.use(requireAuth, loadEntitlements);
 
 integrationsRouter.get(
   '/status',
@@ -60,6 +61,7 @@ integrationsRouter.get(
 integrationsRouter.post(
   '/discovery/test',
   searchLimiter,
+  requireToolAccess,
   asyncHandler(async (_req, res) => {
     if (isApifyConfigured()) {
       const result = await testApifyConnection();

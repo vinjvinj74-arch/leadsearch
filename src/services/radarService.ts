@@ -24,6 +24,7 @@ import {
 import { resolveLocation, type RadarLocation } from './geocodingService.js';
 import { loadScoreWeights, type LeadRow } from './leadsService.js';
 import { upsertLeadFromPlace } from './searchService.js';
+import { attachCreditToSearch, refundCreditByReference } from './subscriptionService.js';
 import type { PlaceResult } from './placesService.js';
 
 export type RadarStatus = 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
@@ -490,7 +491,9 @@ async function processRadarSearch(
   runId: string,
   limit: number,
   weights: Partial<ScoreWeights> | null,
+  creditReference?: string,
 ): Promise<void> {
+  let resultsImported = false;
   try {
     const run = await waitForSearchRun(runId);
     const current = await query<{ status: RadarStatus }>(
@@ -508,6 +511,7 @@ async function processRadarSearch(
     if (afterFetch.rows[0]?.status === 'cancelled') return;
 
     const found = await storeRadarResults(userId, searchId, places, weights);
+    resultsImported = true;
     await query(
       `UPDATE radar_searches SET
         status = 'completed',
@@ -521,19 +525,37 @@ async function processRadarSearch(
     logger.info({ userId, searchId, runId, found }, 'Pesquisa do Radar importada');
   } catch (error) {
     logger.error({ err: error, userId, searchId, runId }, 'Falha ao processar pesquisa do Radar');
-    await query(
+    const failed = await query<{ status: RadarStatus }>(
       `UPDATE radar_searches SET
         status = 'failed',
         error_message = $3,
         completed_at = now(),
         updated_at = now()
-       WHERE id = $1 AND user_id = $2 AND status <> 'cancelled'`,
+       WHERE id = $1 AND user_id = $2 AND status <> 'cancelled'
+       RETURNING status`,
       [searchId, userId, 'Nao foi possivel concluir a pesquisa.'],
     );
+    // Cancelamento pelo usuario nao gera estorno: o provedor externo ja foi
+    // acionado e o custo incorrido nao e reembolsado. Somente falhas antes da
+    // importacao de resultados devolvem o credito.
+    const cancelled = failed.rows.length === 0;
+    if (!resultsImported && !cancelled && creditReference) {
+      await refundCreditByReference(
+        userId,
+        creditReference,
+        'Pesquisa do Radar não concluída pelo provedor: crédito devolvido.',
+      ).catch((refundError) => {
+        logger.error({ err: refundError, userId, searchId }, 'Falha ao devolver credito do Radar');
+      });
+    }
   }
 }
 
-export async function createRadarSearch(userId: string, input: RadarCreateInput) {
+export async function createRadarSearch(
+  userId: string,
+  input: RadarCreateInput,
+  creditReference?: string,
+) {
   if (!isApifyConfigured()) {
     throw integrationNotConfigured('A pesquisa de empresas nao esta disponivel no momento.');
   }
@@ -673,9 +695,10 @@ export async function createRadarSearch(userId: string, input: RadarCreateInput)
       [search.id, userId, run.runId, run.datasetId],
     );
     search = updated.rows[0] ?? search;
+    if (creditReference) await attachCreditToSearch(userId, creditReference, search.id);
 
     const weights = await loadScoreWeights(userId);
-    void processRadarSearch(userId, search.id, run.runId, limit, weights)
+    void processRadarSearch(userId, search.id, run.runId, limit, weights, creditReference)
       .catch((error) => {
         logger.error({ err: error, searchId: search?.id, runId: run.runId }, 'Falha nao tratada do Radar');
       })

@@ -1,9 +1,9 @@
 {
-  "name": "leadsearch",
+  "name": "radar",
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "LeadSearch - plataforma de prospeccao comercial com descoberta de empresas, enriquecimento de contatos e CRM.",
+  "description": "RADAR - plataforma de prospeccao comercial com descoberta de empresas, enriquecimento de contatos e CRM.",
   "license": "UNLICENSED",
   "engines": {
     "node": ">=20.0.0"

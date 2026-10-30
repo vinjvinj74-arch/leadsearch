@@ -6,34 +6,41 @@
     <meta name="theme-color" content="#08090b" />
     <meta
       name="description"
-      content="LeadSearch: encontre empresas, descubra canais de contato e organize oportunidades comerciais."
+      content="RADAR: encontre empresas, descubra canais de contato e organize oportunidades comerciais."
     />
-    <title>LeadSearch</title>
-    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <title>RADAR</title>
+    <link rel="icon" href="/logo.png" type="image/png" />
+    <link rel="apple-touch-icon" href="/logo.png" />
     <link rel="stylesheet" href="/vendor/leaflet/leaflet.css" />
     <link rel="stylesheet" href="/vendor/leaflet-markercluster/MarkerCluster.css" />
     <link rel="stylesheet" href="/vendor/leaflet-markercluster/MarkerCluster.Default.css" />
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
-    <a class="skip-link" href="#main-view">Pular para o conteudo</a>
+    <a class="skip-link" href="#main-view">Pular para o conteúdo</a>
     <div id="toast-region" class="toast-region" aria-live="polite" aria-atomic="false"></div>
 
     <section id="auth-view" class="auth-shell" hidden>
       <div class="auth-brand">
-        <img src="/logo.png" alt="LeadSearch" style="height:64px;width:auto;margin-bottom:16px" />
-        <h1>LeadSearch</h1>
+        <img src="/logo.png" alt="RADAR" class="auth-logo" />
+        <h1>RADAR</h1>
         <p class="auth-tagline">
-          Prospec��ǜo comercial com dados reais, origem registrada e foco em oportunidades que podem virar venda.
+          Prospecção comercial com dados reais, origem registrada e foco em oportunidades que podem virar venda.
         </p>
         <ul class="auth-features">
-          <li>Pesquisa de empresas por nicho e localiza��ǜo</li>
-          <li>Enriquecimento de contatos a partir de fontes pǧblicas autorizadas</li>
-          <li>Pontua��ǜo explicǭvel, CRM e hist��rico comercial</li>
+          <li>Pesquisa de empresas por nicho e localização</li>
+          <li>Enriquecimento de contatos a partir de fontes públicas autorizadas</li>
+          <li>Pontuação explicável, CRM e histórico comercial</li>
         </ul>
         <p class="auth-footnote">
-          Pesquisa de empresas e SMTP sǜo configurados no servidor. Nenhuma chave privada Ǹ exposta no navegador.
+          Pesquisa de empresas e SMTP são configurados no servidor. Nenhuma chave privada é exposta no navegador.
         </p>
+        <nav class="legal-links auth-legal-links" aria-label="Documentos legais">
+          <a href="/termos" target="_blank" rel="noopener noreferrer">Termos</a>
+          <a href="/privacidade" target="_blank" rel="noopener noreferrer">Privacidade</a>
+          <a href="/lgpd" target="_blank" rel="noopener noreferrer">LGPD</a>
+          <a href="/politicas" target="_blank" rel="noopener noreferrer">Políticas</a>
+        </nav>
       </div>
 
       <div class="auth-panel-wrap">
@@ -98,6 +105,15 @@
                 <span>Confirmar senha</span>
                 <input type="password" name="confirmPassword" autocomplete="new-password" required maxlength="128" />
               </label>
+              <label class="checkbox-row legal-consent">
+                <input type="checkbox" name="acceptLegal" required />
+                <span>
+                  Li e aceito os <a href="/termos" target="_blank" rel="noopener noreferrer">Termos de Uso</a>,
+                  a <a href="/privacidade" target="_blank" rel="noopener noreferrer">Política de Privacidade</a>
+                  e declaro ciência dos meus direitos na
+                  <a href="/lgpd" target="_blank" rel="noopener noreferrer">LGPD</a>.
+                </span>
+              </label>
               <p class="form-error" data-error-for="register" role="alert" hidden></p>
               <button class="btn btn-primary btn-block" type="submit">Criar conta</button>
             </form>
@@ -158,11 +174,11 @@
       <div class="mobile-overlay" id="mobile-overlay" hidden></div>
       <aside class="sidebar" id="sidebar" aria-label="Navegação principal">
         <div class="sidebar-head">
-          <a class="brand" href="#/dashboard" aria-label="LeadSearch - Dashboard">
-            <img src="/logo.png" alt="LeadSearch" class="brand-logo" style="height:32px;width:auto;display:block" />
+          <a class="brand" href="#/dashboard" aria-label="RADAR - Dashboard">
+            <img src="/logo.png" alt="RADAR" class="brand-logo" />
             <span class="brand-text">
-              <strong>LeadSearch</strong>
-              <small>Prospec��ǜo comercial</small>
+              <strong>RADAR</strong>
+              <small>Prospecção comercial</small>
             </span>
           </a>
         </div>
@@ -189,8 +205,14 @@
           </a>
         </nav>
         <div class="sidebar-foot">
+          <nav class="legal-links sidebar-legal-links" aria-label="Documentos legais">
+            <a href="/sales" target="_blank" rel="noopener noreferrer">Planos</a>
+            <a href="/termos" target="_blank" rel="noopener noreferrer">Termos</a>
+            <a href="/privacidade" target="_blank" rel="noopener noreferrer">Privacidade</a>
+            <a href="/lgpd" target="_blank" rel="noopener noreferrer">LGPD</a>
+          </nav>
           <div class="user-chip">
-            <span class="user-avatar" id="user-avatar" aria-hidden="true">LS</span>
+            <span class="user-avatar" id="user-avatar" aria-hidden="true">RA</span>
             <span class="user-meta">
               <strong id="user-name">Usuário</strong>
               <small id="user-email">—</small>
@@ -215,6 +237,7 @@
             <p id="page-subtitle" class="muted">Visão geral da sua prospecção.</p>
           </div>
           <div class="topbar-actions">
+            <a class="badge plan-badge" id="plan-badge" href="/sales" title="Plano e créditos">Plano: —</a>
             <span class="badge" id="maps-badge" data-short="Verificando" title="Estado da pesquisa de empresas">Pesquisa: verificando</span>
             <button class="btn btn-ghost btn-icon theme-toggle" type="button" aria-label="Alternar tema">
               <span class="theme-icon" aria-hidden="true"></span>

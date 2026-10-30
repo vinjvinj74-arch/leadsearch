@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#08090b" />
+    <meta name="description" content="Política de Segurança do RADAR." />
+    <title>Política de Segurança · RADAR</title>
+    <link rel="icon" href="/logo.png" type="image/png" />
+    <link rel="stylesheet" href="/legal.css" />
+  </head>
+  <body>
+    <header class="legal-header">
+      <a class="legal-brand" href="/"><img src="/logo.png" alt="RADAR" /><span>RADAR</span></a>
+      <nav class="legal-nav" aria-label="Documentos legais">
+        <a href="/termos">Termos</a>
+        <a href="/privacidade">Privacidade</a>
+        <a href="/lgpd">LGPD</a>
+        <a href="/politicas" aria-current="page">Políticas</a>
+      </nav>
+    </header>
+
+    <main class="legal-main">
+      <p class="eyebrow">Documento legal · Versão 2026-10-28</p>
+      <h1>Política de Segurança</h1>
+      <p class="meta">Última atualização: 28 de outubro de 2026 · Controlador: RADAR · Contato: vinjvinj74@gmail.com</p>
+
+      <div class="card notice">
+        <p>
+          O RADAR adota controles técnicos e organizacionais para proteger contas, dados comerciais e dados pessoais.
+          Esta página descreve as camadas principais, sem divulgar detalhes que possam facilitar ataques.
+        </p>
+      </div>
+
+      <h2>1. Camadas de proteção</h2>
+      <h3>1.1 Borda e transporte</h3>
+      <p>
+        Helmet, Content Security Policy, HSTS em produção, políticas de origem, COOP, CORP, Permissions-Policy, CORS
+        restrito e ocultação de tecnologias do servidor.
+      </p>
+
+      <h3>1.2 Prevenção de abuso</h3>
+      <p>
+        Rate limiting por rota e por usuário, limites de tamanho de requisição, bloqueio temporário após tentativas
+        repetidas de login, validação de entrada e timeouts de conexão.
+      </p>
+
+      <h3>1.3 Identidade e sessão</h3>
+      <p>
+        Senhas protegidas com Argon2id, tokens de sessão aleatórios armazenados apenas em hash, cookies HttpOnly,
+        Secure e SameSite, expiração absoluta e por inatividade, revogação de sessões e rotação de CSRF.
+      </p>
+
+      <h3>1.4 CSRF e origem</h3>
+      <p>
+        Double-submit de CSRF, validação de Origin, Referer e Sec-Fetch-Site, além de rejeição de requisições
+        cruzadas em operações sensíveis.
+      </p>
+
+      <h3>1.5 Autorização</h3>
+      <p>
+        Separação de papéis, exigência de autenticação, isolamento de consultas por usuário e auditoria de ações
+        administrativas e sensíveis.
+      </p>
+
+      <h3>1.6 Proteção de dados</h3>
+      <p>
+        Validação com Zod, consultas SQL parametrizadas, escaping de saída, proteção contra injeção de CSV, proteção
+        contra SSRF em enriquecimento de sites e revisão de dependências vulneráveis.
+      </p>
+
+      <h3>1.7 Auditoria e resposta</h3>
+      <p>
+        Identificadores de requisição, logs estruturados com remoção de segredos, eventos de segurança, registro de
+        consentimentos e tratamento controlado de erros.
+      </p>
+
+      <h2>2. Responsabilidades do usuário</h2>
+      <ul>
+        <li>usar senha forte e exclusiva;</li>
+        <li>não compartilhar credenciais ou tokens;</li>
+        <li>manter navegador e dispositivo atualizados;</li>
+        <li>comunicar acessos suspeitos imediatamente;</li>
+        <li>não tentar contornar controles de segurança ou explorar falhas sem autorização.</li>
+      </ul>
+
+      <h2>3. Incidentes de segurança</h2>
+      <p>
+        Incidentes são avaliados quanto a impacto, dados afetados e risco aos titulares. O RADAR pode conter
+        acessos, revogar sessões, corrigir sistemas e preservar evidências. Quando exigido, comunicará titulares e a
+        ANPD nos prazos aplicáveis.
+      </p>
+
+      <h2>4. Divulgação responsável</h2>
+      <p>
+        Pesquisadores e usuários podem relatar vulnerabilidades para
+        <a href="mailto:vinjvinj74@gmail.com">vinjvinj74@gmail.com</a>. O relato deve incluir descrição, impacto,
+        passos de reprodução e evidências mínimas, sem acessar, alterar ou divulgar dados de terceiros.
+      </p>
+      <p>
+        Não são autorizados testes que causem indisponibilidade, acesso a contas alheias, engenharia social,
+        exfiltração de dados ou qualquer atividade ilícita. O RADAR não oferece recompensa financeira automática por
+        relatos.
+      </p>
+
+      <h2>5. Limitações</h2>
+      <p>
+        Nenhum sistema é imune a falhas. A segurança depende também de provedores de infraestrutura, dispositivos,
+        redes e práticas do usuário. O RADAR revisa seus controles continuamente, mas não garante ausência total de
+        riscos.
+      </p>
+
+      <h2>6. Contato</h2>
+      <p>
+        Assuntos de segurança: <a href="mailto:vinjvinj74@gmail.com">vinjvinj74@gmail.com</a>. Metadados adicionais
+        estão disponíveis em <a href="/.well-known/security.txt">security.txt</a>.
+      </p>
+    </main>
+
+    <footer class="legal-footer">
+      <nav aria-label="Documentos legais">
+        <a href="/termos">Termos de Uso</a>
+        <a href="/privacidade">Privacidade</a>
+        <a href="/lgpd">LGPD</a>
+        <a href="/politicas/cookies">Cookies</a>
+        <a href="/politicas/seguranca">Segurança</a>
+        <a href="/politicas/uso-aceitavel">Uso Aceitável</a>
+      </nav>
+      <p>RADAR · Versão 2026-10-28 · Contato: vinjvinj74@gmail.com</p>
+    </footer>
+  </body>
+</html>
