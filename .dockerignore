@@ -1,0 +1,15 @@
+node_modules
+dist
+dist-netlify
+.netlify
+.git
+*.log
+.env
+.env.*
+apify.txt
+supabase.txt
+PRIORIDADE.txt
+PROMPT.txt
+tests
+worker
+wrangler.jsonc

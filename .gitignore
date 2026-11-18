@@ -5,6 +5,7 @@ dist-netlify/
 .env.*
 !.env.example
 apify.txt
+supabase.txt
 maps.txt
 logs.txt
 *.log
