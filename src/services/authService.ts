@@ -1,5 +1,4 @@
-import { createHmac, randomBytes } from 'node:crypto';
-import argon2 from 'argon2';
+import { createHmac, randomBytes, timingSafeEqual, webcrypto } from 'node:crypto';
 import type { Request, Response } from 'express';
 import { config } from '../config.js';
 import { query } from '../db/pool.js';
@@ -88,18 +87,50 @@ export function newCsrfToken(): string {
   return randomBytes(32).toString('base64url');
 }
 
+// O Worker roda no plano gratuito (10 ms de CPU por req), então usamos PBKDF2
+// via WebCrypto em vez de Argon2 (nativo e inviável no runtime do Workers).
+const PASSWORD_HASH_PREFIX = 'pbkdf2-sha256';
+const PASSWORD_HASH_ITERATIONS = 10_000;
+const PASSWORD_HASH_KEY_BYTES = 32;
+
+async function derivePasswordKey(password: string, salt: Buffer, iterations: number): Promise<Buffer> {
+  const key = await webcrypto.subtle.importKey(
+    'raw',
+    new TextEncoder().encode(password),
+    'PBKDF2',
+    false,
+    ['deriveBits'],
+  );
+  const bits = await webcrypto.subtle.deriveBits(
+    { name: 'PBKDF2', hash: 'SHA-256', salt: new Uint8Array(salt), iterations },
+    key,
+    PASSWORD_HASH_KEY_BYTES * 8,
+  );
+  return Buffer.from(bits);
+}
+
 export async function hashPassword(password: string): Promise<string> {
-  return argon2.hash(password, {
-    type: argon2.argon2id,
-    memoryCost: 19456,
-    timeCost: 2,
-    parallelism: 1,
-  });
+  const salt = randomBytes(16);
+  const derived = await derivePasswordKey(password, salt, PASSWORD_HASH_ITERATIONS);
+  return [
+    PASSWORD_HASH_PREFIX,
+    PASSWORD_HASH_ITERATIONS,
+    salt.toString('base64url'),
+    derived.toString('base64url'),
+  ].join('$');
 }
 
 export async function verifyPassword(hash: string, password: string): Promise<boolean> {
   try {
-    return await argon2.verify(hash, password);
+    const [prefix, iterationsRaw, saltRaw, digestRaw] = hash.split('$');
+    if (prefix !== PASSWORD_HASH_PREFIX || !iterationsRaw || !saltRaw || !digestRaw) return false;
+    const iterations = Number(iterationsRaw);
+    if (!Number.isSafeInteger(iterations) || iterations < 1 || iterations > 1_000_000) return false;
+
+    const salt = Buffer.from(saltRaw, 'base64url');
+    const expected = Buffer.from(digestRaw, 'base64url');
+    const actual = await derivePasswordKey(password, salt, iterations);
+    return expected.length === actual.length && timingSafeEqual(expected, actual);
   } catch {
     return false;
   }

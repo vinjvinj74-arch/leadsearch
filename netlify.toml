@@ -1,5 +1,5 @@
-# Defina API_ORIGIN no painel do Netlify com a URL publica do Railway.
-# No Railway, inclua a URL do Netlify em APP_ORIGINS e use-a como APP_URL.
+# Defina API_ORIGIN no painel do Netlify com a URL publica do Worker Cloudflare.
+# No Worker, inclua a URL do Netlify em APP_ORIGINS.
 [build]
   command = "npm run build:netlify"
   publish = "dist-netlify"

@@ -4,25 +4,6 @@
   "main": "worker/index.ts",
   "compatibility_date": "2026-11-17",
   "compatibility_flags": ["nodejs_compat"],
-  "containers": [
-    {
-      "class_name": "RadarContainer",
-      "scheduling_policy": "durable_object",
-      "images": {
-        "base": {
-          "dockerfile": "./Dockerfile"
-        }
-      }
-    }
-  ],
-  "durable_objects": {
-    "bindings": [
-      {
-        "name": "RADAR_CONTAINER",
-        "class_name": "RadarContainer"
-      }
-    ]
-  },
   "exports": {
     "RadarContainer": {
       "type": "durable-object",

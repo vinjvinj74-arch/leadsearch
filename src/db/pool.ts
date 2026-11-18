@@ -7,7 +7,7 @@ const { Pool } = pg;
 export const pool = new Pool({
   connectionString: config.databaseUrl || undefined,
   ssl: config.pgSsl ? { rejectUnauthorized: false } : undefined,
-  max: 10,
+  max: Math.max(Number.parseInt(process.env.PG_POOL_MAX ?? '10', 10) || 10, 1),
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 10000,
 });
@@ -47,10 +47,12 @@ export async function checkDatabase(): Promise<{ ok: boolean; latencyMs: number;
     await pool.query('SELECT 1');
     return { ok: true, latencyMs: Date.now() - started };
   } catch (error) {
+    const message = error instanceof Error ? error.message : 'Erro desconhecido.';
+    logger.error({ err: error, message }, 'Falha ao verificar banco de dados');
     return {
       ok: false,
       latencyMs: Date.now() - started,
-      error: error instanceof Error ? error.message : 'Erro desconhecido.',
+      error: message,
     };
   }
 }

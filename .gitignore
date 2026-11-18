@@ -4,6 +4,8 @@ dist-netlify/
 .env
 .env.*
 !.env.example
+.dev.vars
+
 apify.txt
 supabase.txt
 cloudflare workers.txt
@@ -19,3 +21,5 @@ coverage/
 
 # Local Netlify folder
 .netlify
+.wrangler/
+

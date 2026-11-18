@@ -19,10 +19,10 @@
     "build:netlify": "node scripts/build-netlify.mjs",
     "db:migrate": "tsx src/db/migrate-cli.ts",
     "db:export": "tsx scripts/export-supabase-migrations.ts",
-    "deploy:cloudflare": "wrangler deploy"
+    "deploy:cloudflare": "wrangler deploy",
+    "postinstall": "node scripts/patch-iconv-lite.mjs"
   },
   "dependencies": {
-    "argon2": "^0.41.1",
     "cookie-parser": "^1.4.7",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",

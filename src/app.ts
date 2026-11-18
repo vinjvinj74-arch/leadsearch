@@ -26,7 +26,7 @@ import {
   requireSameOrigin,
 } from './middleware/security.js';
 
-export function createApp(): express.Express {
+export function createApp(options: { serveStatic?: boolean } = {}): express.Express {
   const app = express();
   app.set('trust proxy', 1);
   app.disable('x-powered-by');
@@ -73,34 +73,36 @@ export function createApp(): express.Express {
     res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Endpoint nao encontrado.' } });
   });
 
-  const rootDir = process.cwd();
-  const publicDir = path.join(rootDir, 'public');
-  const indexFile = path.join(rootDir, 'index.html');
+  if (options.serveStatic !== false) {
+    const rootDir = process.cwd();
+    const publicDir = path.join(rootDir, 'public');
+    const indexFile = path.join(rootDir, 'index.html');
 
-  app.get('/logo.png', (_req, res) => {
-    res.setHeader('Cache-Control', 'public, max-age=86400, immutable');
-    res.sendFile(path.join(rootDir, 'logo.png'));
-  });
-  app.use(legalPagesRouter);
-  app.get('/sales', (_req, res) => {
-    res.setHeader('Cache-Control', 'public, max-age=300');
-    res.sendFile(path.join(publicDir, 'sales.html'));
-  });
-  app.use(express.static(publicDir, { index: false, maxAge: '1h' }));
-  app.get(['/', '/index.html'], (_req, res) => {
-    res.sendFile(indexFile);
-  });
-  app.get('*', (req, res, next) => {
-    if (req.path.includes('.')) {
-      next();
-      return;
-    }
-    res.sendFile(indexFile);
-  });
+    app.get('/logo.png', (_req, res) => {
+      res.setHeader('Cache-Control', 'public, max-age=86400, immutable');
+      res.sendFile(path.join(rootDir, 'logo.png'));
+    });
+    app.use(legalPagesRouter);
+    app.get('/sales', (_req, res) => {
+      res.setHeader('Cache-Control', 'public, max-age=300');
+      res.sendFile(path.join(publicDir, 'sales.html'));
+    });
+    app.use(express.static(publicDir, { index: false, maxAge: '1h' }));
+    app.get(['/', '/index.html'], (_req, res) => {
+      res.sendFile(indexFile);
+    });
+    app.get('*', (req, res, next) => {
+      if (req.path.includes('.')) {
+        next();
+        return;
+      }
+      res.sendFile(indexFile);
+    });
 
-  app.use((_req, res) => {
-    res.status(404).send('Nao encontrado');
-  });
+    app.use((_req, res) => {
+      res.status(404).send('Nao encontrado');
+    });
+  }
   app.use(errorHandler);
 
   return app;
