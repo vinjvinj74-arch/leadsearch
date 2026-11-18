@@ -51,6 +51,19 @@ class WorkerMemoryStore implements Store {
   }
 }
 
+// req.ip é undefined no runtime do Workers (cloudflare:node), o que fazia o
+// express-rate-limit agrupar todas as requisições chave 'undefined' e avisar
+// de contagem dupla. clientIpHash já é calculado no requestContext.
+// Cada limiter usa um prefixo próprio para não ser contado como duplicata
+// quando vários limiters avaliam a mesma requisição.
+function clientKey(scope: string) {
+  return (req: Request): string => `${scope}:${req.clientIpHash ?? 'anon'}`;
+}
+
+function userKey(scope: string) {
+  return (req: Request): string => `${scope}:${req.user?.id ?? req.clientIpHash ?? 'anon'}`;
+}
+
 function jsonHandler(message: string, auditAction?: string) {
   return (req: Request, res: import('express').Response) => {
     if (auditAction) {
@@ -66,6 +79,7 @@ export const authLimiter = rateLimit({
   store: new WorkerMemoryStore(),
   standardHeaders: 'draft-7',
   legacyHeaders: false,
+  keyGenerator: clientKey('auth'),
   handler: jsonHandler(
     'Muitas tentativas de autenticacao. Aguarde alguns minutos e tente novamente.',
     'rate_limited_auth',
@@ -78,6 +92,7 @@ export const registerLimiter = rateLimit({
   store: new WorkerMemoryStore(),
   standardHeaders: 'draft-7',
   legacyHeaders: false,
+  keyGenerator: clientKey('register'),
   handler: jsonHandler(
     'Muitas tentativas de cadastro. Aguarde antes de tentar novamente.',
     'rate_limited_register',
@@ -90,6 +105,7 @@ export const forgotPasswordLimiter = rateLimit({
   store: new WorkerMemoryStore(),
   standardHeaders: 'draft-7',
   legacyHeaders: false,
+  keyGenerator: clientKey('forgot-password'),
   handler: jsonHandler(
     'Muitas solicitacoes de recuperacao. Aguarde antes de tentar novamente.',
     'rate_limited_password_reset',
@@ -102,6 +118,7 @@ export const apiLimiter = rateLimit({
   store: new WorkerMemoryStore(),
   standardHeaders: 'draft-7',
   legacyHeaders: false,
+  keyGenerator: clientKey('api'),
   handler: jsonHandler('Limite de requisicoes excedido. Aguarde alguns minutos.'),
 });
 
@@ -111,7 +128,7 @@ export const searchLimiter = rateLimit({
   store: new WorkerMemoryStore(),
   standardHeaders: 'draft-7',
   legacyHeaders: false,
-  keyGenerator: (req: Request) => req.user?.id ?? req.ip ?? 'anon',
+  keyGenerator: userKey('search'),
   handler: jsonHandler('Limite de pesquisas por hora excedido. Aguarde antes de realizar novas consultas.'),
 });
 
@@ -121,7 +138,7 @@ export const geocodeLimiter = rateLimit({
   store: new WorkerMemoryStore(),
   standardHeaders: 'draft-7',
   legacyHeaders: false,
-  keyGenerator: (req: Request) => req.user?.id ?? req.ip ?? 'anon',
+  keyGenerator: userKey('geocode'),
   handler: jsonHandler('Muitas consultas de localizacao. Aguarde alguns instantes.'),
 });
 
@@ -131,7 +148,7 @@ export const exportLimiter = rateLimit({
   store: new WorkerMemoryStore(),
   standardHeaders: 'draft-7',
   legacyHeaders: false,
-  keyGenerator: (req: Request) => req.user?.id ?? req.ip ?? 'anon',
+  keyGenerator: userKey('export'),
   handler: jsonHandler('Limite de exportacoes excedido. Aguarde alguns minutos.'),
 });
 
@@ -141,7 +158,7 @@ export const contactLimiter = rateLimit({
   store: new WorkerMemoryStore(),
   standardHeaders: 'draft-7',
   legacyHeaders: false,
-  keyGenerator: (req: Request) => req.user?.id ?? req.ip ?? 'anon',
+  keyGenerator: userKey('contact'),
   handler: jsonHandler(
     'Muitas solicitações de contato. Aguarde antes de enviar outra mensagem.',
     'rate_limited_contact',
@@ -154,6 +171,6 @@ export const mutationLimiter = rateLimit({
   store: new WorkerMemoryStore(),
   standardHeaders: 'draft-7',
   legacyHeaders: false,
-  keyGenerator: (req: Request) => req.user?.id ?? req.ip ?? 'anon',
+  keyGenerator: userKey('mutation'),
   handler: jsonHandler('Muitas alteracoes em pouco tempo. Aguarde alguns minutos.', 'rate_limited_mutation'),
 });
