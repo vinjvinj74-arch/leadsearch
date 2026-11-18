@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import type { NextFunction, Request, Response } from 'express';
 import helmet from 'helmet';
 import { config } from '../config.js';
+import { closeRequestClient, runWithDbContext } from '../db/clientContext.js';
 import { recordAudit } from '../lib/audit.js';
 import { AppError } from '../lib/errors.js';
 import { hashIp, requestIp } from '../lib/http.js';
@@ -58,25 +59,28 @@ export function enforceHttps(req: Request, res: Response, next: NextFunction): v
 }
 
 export function requestContext(req: Request, res: Response, next: NextFunction): void {
-  req.requestId = randomUUID();
-  req.clientIpHash = hashIp(requestIp(req));
-  res.setHeader('X-Request-Id', req.requestId);
-  const started = Date.now();
-  res.on('finish', () => {
-    if (req.path === '/api/health') return;
-    logger.info(
-      {
-        requestId: req.requestId,
-        method: req.method,
-        path: req.path,
-        status: res.statusCode,
-        durationMs: Date.now() - started,
-        userId: req.user?.id ?? null,
-      },
-      'requisicao',
-    );
+  runWithDbContext(() => {
+    req.requestId = randomUUID();
+    req.clientIpHash = hashIp(requestIp(req));
+    res.setHeader('X-Request-Id', req.requestId);
+    const started = Date.now();
+    res.on('finish', () => {
+      void closeRequestClient();
+      if (req.path === '/api/health') return;
+      logger.info(
+        {
+          requestId: req.requestId,
+          method: req.method,
+          path: req.path,
+          status: res.statusCode,
+          durationMs: Date.now() - started,
+          userId: req.user?.id ?? null,
+        },
+        'requisicao',
+      );
+    });
+    next();
   });
-  next();
 }
 
 export function corsMiddleware(req: Request, res: Response, next: NextFunction): void {

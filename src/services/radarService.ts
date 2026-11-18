@@ -1,4 +1,4 @@
-import type { PoolClient } from 'pg';
+import type { Client } from 'pg';
 import { config, type LeadStatus, type WebsiteStatus } from '../config.js';
 import { query, withTransaction } from '../db/pool.js';
 import { toCsv } from '../lib/csv.js';
@@ -376,7 +376,7 @@ function scoreRadarPlace(
 }
 
 async function findExistingLeadForRadar(
-  client: PoolClient,
+  client: Client,
   userId: string,
   place: RadarApifyPlace,
 ): Promise<LeadRow | null> {

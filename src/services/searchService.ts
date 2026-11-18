@@ -1,4 +1,4 @@
-import type { PoolClient } from 'pg';
+import type { Client } from 'pg';
 import { withTransaction, query } from '../db/pool.js';
 import { config } from '../config.js';
 import { conflict, notFound } from '../lib/errors.js';
@@ -64,7 +64,7 @@ export function mapSearch(row: SearchRow) {
 }
 
 async function findExistingLead(
-  client: PoolClient,
+  client: Client,
   userId: string,
   placeId: string | null,
   domain: string,
@@ -118,7 +118,7 @@ function scorePlace(
 }
 
 export async function upsertLeadFromPlace(
-  client: PoolClient,
+  client: Client,
   userId: string,
   searchId: string | null,
   place: PlaceResult,
