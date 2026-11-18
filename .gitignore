@@ -6,6 +6,8 @@ dist-netlify/
 !.env.example
 apify.txt
 supabase.txt
+cloudflare workers.txt
+supabase/.temp/
 maps.txt
 logs.txt
 *.log
