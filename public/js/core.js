@@ -355,7 +355,7 @@ export function pageSkeleton(kind) {
 export function emptyState(title, description, actionHtml = '') {
   return `
     <div class="empty-state">
-      <span class="empty-icon" aria-hidden="true"><img src="/logo.png" alt="" class="empty-logo" /></span>
+      <span class="empty-icon" aria-hidden="true"><img src="/radar%20logo.png" alt="" class="empty-logo" /></span>
       <h3>${esc(title)}</h3>
       <p>${esc(description)}</p>
       ${actionHtml}
