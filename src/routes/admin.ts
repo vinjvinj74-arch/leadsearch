@@ -26,7 +26,6 @@ interface AdminUserRow {
   email: string;
   role: string;
   created_at: Date;
-  email_verified_at: Date | null;
   plan_id: string | null;
   status: string | null;
   credits_used: number | null;
@@ -42,7 +41,6 @@ function mapAdminUser(row: AdminUserRow) {
     email: row.email,
     role: row.role,
     createdAt: row.created_at.toISOString(),
-    emailVerifiedAt: row.email_verified_at ? row.email_verified_at.toISOString() : null,
     planId: row.plan_id,
     planName: getPlan(row.plan_id)?.name ?? null,
     status: row.status,
@@ -55,7 +53,7 @@ function mapAdminUser(row: AdminUserRow) {
 }
 
 const USERS_SELECT = `
-  SELECT u.id, u.name, u.email, u.role, u.created_at, u.email_verified_at,
+  SELECT u.id, u.name, u.email, u.role, u.created_at,
          s.plan_id, s.status, s.credits_used, s.credits_limit, s.current_period_end, s.provider
   FROM users u
   LEFT JOIN user_subscriptions s ON s.user_id = u.id`;

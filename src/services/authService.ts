@@ -19,7 +19,6 @@ export interface UserRow {
   name: string;
   email: string;
   password_hash: string;
-  email_verified_at: Date | null;
   failed_login_attempts: number;
   locked_until: Date | null;
   created_at: Date;
@@ -51,7 +50,6 @@ export function toAuthUser(
     id: row.id,
     name: row.name,
     email: row.email,
-    emailVerifiedAt: row.email_verified_at ? row.email_verified_at.toISOString() : null,
     createdAt: row.created_at.toISOString(),
     role: entitlements.role,
     isSuperAdmin: entitlements.isSuperAdmin,

@@ -2,7 +2,6 @@ import nodemailer, { type Transporter } from 'nodemailer';
 import { config } from '../config.js';
 import { query } from '../db/pool.js';
 import { AppError, integrationNotConfigured, badRequest } from '../lib/errors.js';
-import { logger } from '../lib/logger.js';
 import { hashToken, newToken } from './authService.js';
 
 let transporter: Transporter | null = null;
@@ -14,7 +13,7 @@ export function isEmailConfigured(): boolean {
 function getTransporter(): Transporter {
   if (!isEmailConfigured()) {
     throw integrationNotConfigured(
-      'Servico de e-mail nao configurado. Defina SMTP_HOST e SMTP_FROM para habilitar recuperacao de senha e verificacao.',
+      'Servico de e-mail nao configurado. Defina SMTP_HOST e SMTP_FROM para habilitar a recuperacao de senha.',
     );
   }
   if (!transporter) {
@@ -50,7 +49,7 @@ async function send(to: string, subject: string, text: string, html: string): Pr
 
 export async function createEmailToken(
   userId: string,
-  type: 'verify_email' | 'reset_password',
+  type: 'reset_password',
   ttlMinutes: number,
 ): Promise<string> {
   await query('DELETE FROM email_tokens WHERE user_id = $1 AND type = $2 AND used_at IS NULL', [userId, type]);
@@ -65,7 +64,7 @@ export async function createEmailToken(
 
 export async function consumeEmailToken(
   token: string,
-  type: 'verify_email' | 'reset_password',
+  type: 'reset_password',
 ): Promise<string> {
   const result = await query<{ user_id: string }>(
     `UPDATE email_tokens
@@ -81,18 +80,6 @@ export async function consumeEmailToken(
   return userId;
 }
 
-export async function sendVerificationEmail(email: string, name: string, token: string): Promise<void> {
-  const link = `${publicBaseUrl()}/#/verify-email?token=${encodeURIComponent(token)}`;
-  const safeName = escapeHtml(name);
-  const safeLink = escapeHtml(link);
-  await send(
-    email,
-    'Confirme seu e-mail no RADAR',
-    `Ola, ${name}.\n\nConfirme seu e-mail acessando: ${link}\n\nO link expira em 24 horas.`,
-    `<p>Ola, ${safeName}.</p><p>Confirme seu e-mail no RADAR:</p><p><a href="${safeLink}">Confirmar e-mail</a></p><p>O link expira em 24 horas.</p>`,
-  );
-}
-
 export async function sendPasswordResetEmail(email: string, name: string, token: string): Promise<void> {
   const link = `${publicBaseUrl()}/#/reset-password?token=${encodeURIComponent(token)}`;
   const safeName = escapeHtml(name);
@@ -105,26 +92,12 @@ export async function sendPasswordResetEmail(email: string, name: string, token:
   );
 }
 
-export async function trySendVerificationEmail(
-  email: string,
-  name: string,
-  token: string,
-): Promise<boolean> {
-  try {
-    await sendVerificationEmail(email, name, token);
-    return true;
-  } catch (error) {
-    logger.warn({ err: error, emailConfigured: isEmailConfigured() }, 'Nao foi possivel enviar e-mail de verificacao');
-    return false;
-  }
-}
-
 export function assertEmailConfigured(): void {
   if (!isEmailConfigured()) {
     throw new AppError(
       503,
       'EMAIL_NOT_CONFIGURED',
-      'Servico de e-mail nao configurado. A recuperacao de senha e a verificacao de e-mail exigem SMTP configurado.',
+      'Servico de e-mail nao configurado. A recuperacao de senha exige SMTP configurado.',
     );
   }
 }

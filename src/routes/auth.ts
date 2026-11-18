@@ -28,7 +28,6 @@ import {
   createEmailToken,
   isEmailConfigured,
   sendPasswordResetEmail,
-  trySendVerificationEmail,
 } from '../services/emailService.js';
 import { ensureSettings } from '../services/settingsService.js';
 import { getEntitlements, loadSubscription } from '../services/subscriptionService.js';
@@ -57,7 +56,6 @@ const loginSchema = z.object({
 
 const forgotSchema = z.object({ email: emailSchema });
 const resetSchema = z.object({ token: z.string().min(20), password: passwordSchema });
-const verifySchema = z.object({ token: z.string().min(20) });
 
 function setSignedIn(req: Request, response: UserRow) {
   req.user = toAuthUser(response);
@@ -118,10 +116,6 @@ authRouter.post(
     await createSession(req, res, user.id);
     setSignedIn(req, user);
 
-    const verificationToken = await createEmailToken(user.id, 'verify_email', 24 * 60);
-    if (isEmailConfigured()) {
-      void trySendVerificationEmail(user.email, user.name, verificationToken);
-    }
     recordAudit(req, 'register', 'user', user.id);
     recordAudit(req, 'legal_consent_accepted', 'user', user.id, {
       version: LEGAL_VERSION,
@@ -134,7 +128,6 @@ authRouter.post(
     res.status(201).json({
       user: toAuthUser(user, subscription),
       settings: await ensureSettings(user.id),
-      emailVerificationSent: isEmailConfigured(),
     });
   }),
 );
@@ -279,36 +272,6 @@ authRouter.post(
     clearCsrfCookie(res);
 
     res.json({ ok: true, message: 'Senha redefinida. Entre novamente com a nova senha.' });
-  }),
-);
-
-authRouter.post(
-  '/verify-email',
-  authLimiter,
-  asyncHandler(async (req, res) => {
-    const body = verifySchema.parse(req.body);
-    const userId = await consumeEmailToken(body.token, 'verify_email');
-    const user = await findUserById(userId);
-    if (!user) throw badRequest('Token invalido ou expirado.');
-    await query('UPDATE users SET email_verified_at = now(), updated_at = now() WHERE id = $1', [userId]);
-    req.user = toAuthUser(user);
-    recordAudit(req, 'email_verified', 'user', userId);
-    res.json({ ok: true, message: 'E-mail verificado com sucesso.' });
-  }),
-);
-
-authRouter.post(
-  '/resend-verification',
-  authLimiter,
-  requireAuth,
-  asyncHandler(async (req, res) => {
-    assertEmailConfigured();
-    const user = await findUserById(req.user!.id);
-    if (!user) throw unauthorized();
-    if (user.email_verified_at) throw badRequest('Este e-mail ja foi verificado.');
-    const token = await createEmailToken(user.id, 'verify_email', 24 * 60);
-    await trySendVerificationEmail(user.email, user.name, token);
-    res.json({ ok: true, message: 'Se o SMTP estiver operacional, o e-mail de verificacao foi enviado.' });
   }),
 );
 

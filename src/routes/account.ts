@@ -15,7 +15,6 @@ import {
   verifyPassword,
   type UserRow,
 } from '../services/authService.js';
-import { createEmailToken, isEmailConfigured, trySendVerificationEmail } from '../services/emailService.js';
 import { ensureSettings, getIntegrationStatus } from '../services/settingsService.js';
 import { publicSourceName } from '../services/leadsService.js';
 
@@ -63,25 +62,20 @@ accountRouter.patch(
       `UPDATE users SET
         name = COALESCE($2, name),
         email = COALESCE($3, email),
-        email_verified_at = CASE WHEN $4 THEN NULL ELSE email_verified_at END,
         updated_at = now()
        WHERE id = $1
        RETURNING *`,
-      [user.id, body.name ?? null, body.email ?? null, emailChanged],
+      [user.id, body.name ?? null, body.email ?? null],
     );
     const row = updated.rows[0];
     if (!row) throw notFound('Usuario nao encontrado.');
 
     if (emailChanged) {
-      const token = await createEmailToken(user.id, 'verify_email', 24 * 60);
-      if (isEmailConfigured()) {
-        void trySendVerificationEmail(body.email!, body.name ?? user.name, token);
-      }
       recordAudit(req, 'email_changed', 'user', user.id);
     }
     recordAudit(req, 'profile_updated', 'user', user.id);
 
-    res.json({ user: toAuthUser(row), emailVerificationSent: emailChanged && isEmailConfigured() });
+    res.json({ user: toAuthUser(row) });
   }),
 );
 
