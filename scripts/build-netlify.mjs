@@ -42,7 +42,7 @@ const apiBase = parsedOrigin.origin;
 await rm(outputDir, { recursive: true, force: true });
 await mkdir(outputDir, { recursive: true });
 await cp(path.join(root, 'index.html'), path.join(outputDir, 'index.html'));
-await cp(path.join(root, 'radar logo.png'), path.join(outputDir, 'radar logo.png'));
+await cp(path.join(root, 'radar logo.png'), path.join(outputDir, 'radar-logo.png'));
 
 for (const entry of await readdir(publicDir, { withFileTypes: true })) {
   await cp(path.join(publicDir, entry.name), path.join(outputDir, entry.name), { recursive: true });
@@ -95,7 +95,7 @@ const headers = [
   `/index.html`,
   `  Cache-Control: no-cache`,
   ``,
-  `/radar%20logo.png`,
+  `/radar-logo.png`,
   `  Cache-Control: public, max-age=31536000, immutable`,
   ``,
 ].join('\n');

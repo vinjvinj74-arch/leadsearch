@@ -78,7 +78,7 @@ export function createApp(options: { serveStatic?: boolean } = {}): express.Expr
     const publicDir = path.join(rootDir, 'public');
     const indexFile = path.join(rootDir, 'index.html');
 
-    app.get(['/radar%20logo.png', '/radar logo.png'], (_req, res) => {
+    app.get('/radar-logo.png', (_req, res) => {
       res.setHeader('Cache-Control', 'public, max-age=86400, immutable');
       res.sendFile(path.join(rootDir, 'radar logo.png'));
     });
