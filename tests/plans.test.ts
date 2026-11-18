@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   ADMIN_EMAIL,
+  ADMIN_EMAILS,
   CREDIT_UNIT_DESCRIPTION,
   PLAN_COMPARISON,
   PLAN_IDS,
@@ -62,9 +63,13 @@ describe('configuração de planos', () => {
 });
 
 describe('papéis e administrador', () => {
-  it('reconhece somente o e-mail autorizado como super admin', () => {
-    expect(isSuperAdminEmail(ADMIN_EMAIL)).toBe(true);
-    expect(isSuperAdminEmail(`  ${ADMIN_EMAIL.toUpperCase()}  `)).toBe(true);
+  it('reconhece apenas os e-mails autorizados como super admin', () => {
+    expect(ADMIN_EMAILS).toContain(ADMIN_EMAIL);
+    expect(ADMIN_EMAILS).toContain('09santos.felipe@gmail.com');
+    for (const email of ADMIN_EMAILS) {
+      expect(isSuperAdminEmail(email)).toBe(true);
+      expect(isSuperAdminEmail(`  ${email.toUpperCase()}  `)).toBe(true);
+    }
     expect(isSuperAdminEmail('outro@example.com')).toBe(false);
     expect(isSuperAdminEmail('')).toBe(false);
     expect(isSuperAdminEmail(null)).toBe(false);

@@ -7,6 +7,14 @@
  */
 
 export const ADMIN_EMAIL = 'vinjvinj74@gmail.com';
+
+/**
+ * E-mails com papel de super administrador.
+ * O super admin possui acesso ilimitado: nao consome creditos e nao exige
+ * assinatura ativa (ver entitlementsFromRow/consumeCredits).
+ */
+export const ADMIN_EMAILS = [ADMIN_EMAIL, '09santos.felipe@gmail.com'] as const;
+
 export const SUPER_ADMIN_ROLE = 'super_admin' as const;
 
 export type UserRole = 'user' | typeof SUPER_ADMIN_ROLE;
@@ -138,7 +146,9 @@ export function getPlan(planId: string | null | undefined): PlanDefinition | nul
 }
 
 export function isSuperAdminEmail(email: string | null | undefined): boolean {
-  return Boolean(email) && String(email).trim().toLowerCase() === ADMIN_EMAIL;
+  if (!email) return false;
+  const normalized = String(email).trim().toLowerCase();
+  return ADMIN_EMAILS.some((candidate) => candidate.toLowerCase() === normalized);
 }
 
 /** Normaliza qualquer papel legado para o modelo atual. */

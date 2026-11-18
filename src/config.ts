@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import { ADMIN_EMAIL } from './plans.js';
+import { ADMIN_EMAIL, ADMIN_EMAILS } from './plans.js';
 
 function bool(value: string | undefined, fallback = false): boolean {
   if (value === undefined || value === '') return fallback;
@@ -37,6 +37,7 @@ export const config = {
     .filter(Boolean),
   appUrl: (process.env.APP_URL ?? '').replace(/\/$/, ''),
   adminEmail: ADMIN_EMAIL,
+  adminEmails: ADMIN_EMAILS,
   googleMapsApiKey: process.env.GOOGLE_MAPS_API_KEY ?? '',
   apifyApiToken: process.env.APIFY_API_TOKEN ?? '',
   billing: {

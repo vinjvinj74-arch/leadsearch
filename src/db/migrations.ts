@@ -512,4 +512,15 @@ export const migrations: Migration[] = [
       CREATE INDEX IF NOT EXISTS contact_requests_kind_status_idx ON contact_requests (kind, status);
     `,
   },
+  {
+    version: 6,
+    name: 'administrador_09santos_felipe',
+    sql: `
+      -- Super administrador adicional: papel ja concede acesso ilimitado
+      -- (sem consumo de creditos e sem exigencia de assinatura).
+      UPDATE users SET role = 'super_admin', updated_at = now()
+      WHERE lower(email) = lower('09santos.felipe@gmail.com')
+        AND role <> 'super_admin';
+    `,
+  },
 ];
